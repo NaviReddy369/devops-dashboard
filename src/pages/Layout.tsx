@@ -10,7 +10,7 @@ const Layout = () => {
       <header className="border-b border-white/10 bg-black/30 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <NavLink to="/" className="text-lg font-semibold text-purple-100 hover:text-white">
-            DevOps Dashboard
+            GNK Continuum
           </NavLink>
           <nav className="flex items-center gap-2">
             <NavLink to="/" className={navLinkClasses} end>
@@ -35,7 +35,7 @@ const Layout = () => {
 
       <footer className="border-t border-white/10 bg-black/30 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-4 text-sm text-purple-200">
-          © {new Date().getFullYear()} DevOps Dashboard
+          © {new Date().getFullYear()} GNK Continuum
         </div>
       </footer>
     </div>

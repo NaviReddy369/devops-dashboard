@@ -4,7 +4,7 @@ import { Briefcase, ArrowRight } from 'lucide-react';
 
 const Services = () => {
   const services = [
-    { name: 'DevOps Dashboard', path: '/services/devops-dashboard', description: 'Numerology-inspired insights experience.' },
+    { name: 'Know the Right Path', path: '/services/devops-dashboard', description: 'Numerology-inspired insights experience.' },
     { name: 'About', path: '/about', description: 'Learn more about our mission and approach.' },
     { name: 'Contact', path: '/contact', description: 'Get in touch with the team.' }
   ];

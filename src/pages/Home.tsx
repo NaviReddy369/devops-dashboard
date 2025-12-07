@@ -9,17 +9,11 @@ const Home = () => {
         <div className="flex justify-center">
           <Sparkles className="w-12 h-12 text-purple-300 animate-pulse" />
         </div>
-        <h1 className="text-4xl font-bold">Welcome to the DevOps Dashboard</h1>
+        <h1 className="text-4xl font-bold">Welcome to GNK Continuum</h1>
         <p className="text-lg text-purple-100">
           Explore automation, observability, and delivery insights with a cohesive view into your platform.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Link
-            to="/services/devops-dashboard"
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-semibold text-white shadow-lg shadow-purple-500/40 hover:from-purple-600 hover:to-pink-600 transition"
-          >
-            Launch Dashboard
-          </Link>
           <Link
             to="/services"
             className="px-6 py-3 border border-white/20 rounded-xl text-purple-100 hover:border-purple-300/60 hover:text-white transition flex items-center gap-2"
