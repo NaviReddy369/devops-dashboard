@@ -9,6 +9,9 @@ import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
+import NeuralTaskGateway from './pages/NeuralTaskGateway';
+import TaskDashboard from './pages/TaskDashboard';
+import TaskHatch from './pages/TaskHatch';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
@@ -25,6 +28,30 @@ const App = () => {
           element={
             <ProtectedRoute>
               <DevopsDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="neural-task-gateway"
+          element={
+            <ProtectedRoute>
+              <NeuralTaskGateway />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="task-dashboard"
+          element={
+            <ProtectedRoute>
+              <TaskDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="task-hatch"
+          element={
+            <ProtectedRoute>
+              <TaskHatch />
             </ProtectedRoute>
           }
         />
