@@ -32,6 +32,15 @@ const Layout = () => {
             <NavLink to="/services" className={navLinkClasses}>
               Services
             </NavLink>
+            <NavLink to="/task-hatch" className={navLinkClasses}>
+              TaskHatch
+            </NavLink>
+            <NavLink to="/neural-task-gateway" className={navLinkClasses}>
+              Neural Gateway
+            </NavLink>
+            <NavLink to="/task-dashboard" className={navLinkClasses}>
+              Task Dashboard
+            </NavLink>
             <NavLink to="/about" className={navLinkClasses}>
               About
             </NavLink>
