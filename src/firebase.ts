@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, User } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -21,6 +21,28 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Google Authentication Provider
+export const googleProvider = new GoogleAuthProvider();
+
+// Google Sign-In Helper Function
+export const signInWithGoogle = async (): Promise<User> => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error: any) {
+    // Provide a more useful error message
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('Sign-in popup was closed. Please try again.');
+    } else if (error.code === 'auth/popup-blocked') {
+      throw new Error('Popup was blocked by your browser. Please allow popups and try again.');
+    } else if (error.code === 'auth/network-request-failed') {
+      throw new Error('Network error. Please check your connection and try again.');
+    } else {
+      throw new Error(error.message || 'Failed to sign in with Google. Please try again.');
+    }
+  }
+};
 
 export default app;
 
