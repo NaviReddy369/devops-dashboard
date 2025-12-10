@@ -12,6 +12,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import NeuralTaskGateway from './pages/NeuralTaskGateway';
 import TaskDashboard from './pages/TaskDashboard';
 import TaskHatch from './pages/TaskHatch';
+import AgentDashboard from './pages/AgentDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
@@ -57,6 +58,14 @@ const App = () => {
         />
         <Route path="about" element={<About />} />
         <Route path="contact" element={<Contact />} />
+        <Route
+          path="agent-dashboard"
+          element={
+            <ProtectedRoute>
+              <AgentDashboard />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
