@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { BrainCircuit, ClipboardList, Rocket, Shield, Target, Timer } from 'lucide-react';
+import { addDoc, collection, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { BrainCircuit, ClipboardList, Rocket, Shield, Target, Timer, Loader } from 'lucide-react';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { getAIAnalysisService } from '../services/ai/aiAnalysisService';
+import AIAnalysisDisplay from '../components/AIAnalysisDisplay';
+import { AIAnalysis, Task } from '../types';
 
 type Priority = 'low' | 'medium' | 'high' | 'critical';
 type Urgency = 'immediate' | '24h' | 'this-week' | 'flexible';
@@ -57,8 +60,11 @@ const TaskHatch = () => {
   const { currentUser } = useAuth();
   const [formData, setFormData] = useState<TaskHatchForm>(initialForm);
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [submittedTaskId, setSubmittedTaskId] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
 
   const readinessScore = useMemo(() => {
     const requiredFields = [
@@ -100,8 +106,10 @@ const TaskHatch = () => {
       setError('');
       setSuccess(false);
       setLoading(true);
+      setAiAnalysis(null);
 
-      await addDoc(collection(db, 'taskHatchSubmissions'), {
+      // Save task to Firestore
+      const taskRef = await addDoc(collection(db, 'taskHatchSubmissions'), {
         title: formData.title,
         summary: formData.summary,
         requirements: formData.requirements,
@@ -130,9 +138,27 @@ const TaskHatch = () => {
         updatedAt: serverTimestamp()
       });
 
+      setSubmittedTaskId(taskRef.id);
       setSuccess(true);
+
+      // Trigger AI Analysis
+      setAnalyzing(true);
+      try {
+        const taskDoc = await getDoc(taskRef);
+        const taskData = { id: taskRef.id, ...taskDoc.data() } as Task;
+        
+        const aiService = getAIAnalysisService();
+        const analysis = await aiService.analyzeAndSave(taskData);
+        
+        setAiAnalysis(analysis);
+      } catch (analysisError: any) {
+        console.error('AI Analysis error:', analysisError);
+        setError('Task saved but AI analysis failed: ' + (analysisError.message || 'Unknown error'));
+      } finally {
+        setAnalyzing(false);
+      }
+
       setFormData(initialForm);
-      setTimeout(() => setSuccess(false), 5000);
     } catch (err: any) {
       setError(err.message || 'Unable to submit task. Try again.');
     } finally {
@@ -472,9 +498,15 @@ const TaskHatch = () => {
                 {error}
               </div>
             )}
-            {success && (
+            {success && !analyzing && !aiAnalysis && (
               <div className="p-4 bg-green-500/20 border border-green-400/40 rounded-xl text-green-100 text-sm">
-                Task captured. Track it in your dashboard once processing completes.
+                Task captured. AI analysis is processing...
+              </div>
+            )}
+            {analyzing && (
+              <div className="p-4 bg-blue-500/20 border border-blue-400/40 rounded-xl text-blue-100 text-sm flex items-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />
+                <span>AI is analyzing your task. This may take a moment...</span>
               </div>
             )}
 
@@ -498,6 +530,19 @@ const TaskHatch = () => {
             </div>
           </aside>
         </div>
+
+        {/* AI Analysis Results */}
+        {aiAnalysis && (
+          <div className="mt-8">
+            <div className="bg-white/5 border border-purple-300/20 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <BrainCircuit className="w-8 h-8 text-purple-300" />
+                <h2 className="text-2xl font-bold text-purple-100">AI Analysis Complete</h2>
+              </div>
+              <AIAnalysisDisplay analysis={aiAnalysis} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

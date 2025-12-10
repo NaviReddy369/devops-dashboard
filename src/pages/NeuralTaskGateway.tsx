@@ -43,16 +43,23 @@ const NeuralTaskGateway = () => {
       setLoading(true);
       setSuccess(false);
 
-      await addDoc(collection(db, 'neuralTasks'), {
+      const requestRef = await addDoc(collection(db, 'neuralTasks'), {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
         category: formData.category || 'general',
         estimatedHours: formData.estimatedHours ? parseInt(formData.estimatedHours) : null,
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
-        userName: currentUser.displayName || 'Anonymous',
+        requesterId: currentUser.uid,
+        requesterEmail: currentUser.email,
+        requesterName: currentUser.displayName || 'Anonymous',
+        assignedAssistantId: null,
+        assignmentMethod: null,
+        assignmentReason: null,
         status: 'pending',
+        rejectionReason: null,
+        messages: [],
+        lastActivityAt: serverTimestamp(),
+        taskId: null, // Can link to a TaskHatch task if needed
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });

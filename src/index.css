@@ -17,3 +17,109 @@ body {
 code {
   font-family: 'Source Code Pro', Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+
+/* Task Pane Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.task-pane-menu {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Custom Scrollbar for Task Pane */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #a855f7, #6366f1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #9333ea, #4f46e5);
+}
+
+/* Futuristic Animation Keyframes */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit {
+  0% {
+    transform: rotate(0deg) translateX(64px) rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg) translateX(64px) rotate(-360deg);
+  }
+}
+
+@keyframes orbit-reverse {
+  0% {
+    transform: rotate(360deg) translateX(64px) rotate(-360deg);
+  }
+  100% {
+    transform: rotate(0deg) translateX(64px) rotate(0deg);
+  }
+}
+
+@keyframes orbit-slow {
+  0% {
+    transform: rotate(0deg) translateY(64px) rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg) translateY(64px) rotate(-360deg);
+  }
+}
+
+@keyframes orbit-slow-reverse {
+  0% {
+    transform: rotate(360deg) translateY(64px) rotate(-360deg);
+  }
+  100% {
+    transform: rotate(0deg) translateY(64px) rotate(0deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-orbit {
+  animation: orbit 8s linear infinite;
+}
+
+.animate-orbit-reverse {
+  animation: orbit-reverse 8s linear infinite;
+}
+
+.animate-orbit-slow {
+  animation: orbit-slow 12s linear infinite;
+}
+
+.animate-orbit-slow-reverse {
+  animation: orbit-slow-reverse 12s linear infinite;
+}
+
+/* Gradient radial utility */
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}
