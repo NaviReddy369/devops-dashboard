@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // TaskHatch Submissions
+    match /taskHatchSubmissions/{taskId} {
+      // Allow authenticated users to create tasks
+      allow create: if request.auth != null;
+      
+      // Users can read and update their own tasks
+      allow read, update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+    
+    // AI Analyses
+    match /aiAnalyses/{analysisId} {
+      // Allow authenticated users to read and create analyses
+      allow read, create: if request.auth != null;
+      allow update, delete: if false; // Only server-side updates
+    }
+    
+    // Neural Tasks (Neural Gateway requests)
+    match /neuralTasks/{taskId} {
+      // Allow authenticated users to create requests
+      // Check that requesterId matches the authenticated user
+      allow create: if request.auth != null && 
+        request.resource.data.requesterId == request.auth.uid;
+      
+      // Allow read for authenticated users
+      // Users can read their own requests or requests assigned to them
+      allow read: if request.auth != null && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.assignedAssistantId == request.auth.uid ||
+        !('assignedAssistantId' in resource.data) ||
+        resource.data.assignedAssistantId == null
+      );
+      
+      // Allow update for requesters and assigned agents
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.requesterId ||
+        request.auth.uid == resource.data.assignedAssistantId
+      );
+      
+      allow delete: if false; // No deletes
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+    
+    // Default: deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
