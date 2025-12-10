@@ -13,6 +13,7 @@ import NeuralTaskGateway from './pages/NeuralTaskGateway';
 import TaskDashboard from './pages/TaskDashboard';
 import TaskHatch from './pages/TaskHatch';
 import AgentDashboard from './pages/AgentDashboard';
+import TaskerProfile from './pages/TaskerProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
@@ -45,6 +46,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <TaskDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="tasker-profile"
+          element={
+            <ProtectedRoute>
+              <TaskerProfile />
             </ProtectedRoute>
           }
         />

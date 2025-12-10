@@ -1,20 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  Menu, 
-  X, 
-  Home, 
-  Briefcase, 
-  Zap, 
-  Network, 
-  LayoutDashboard, 
-  Info, 
-  Mail, 
-  LogIn, 
-  LogOut, 
+import {
+  Menu,
+  X,
+  Home,
+  Briefcase,
+  Zap,
+  Network,
+  LayoutDashboard,
+  Info,
+  Mail,
+  LogIn,
+  LogOut,
   User,
-  ChevronRight
+  ChevronRight,
+  UserCircle2,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -30,12 +31,22 @@ const TaskPane = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
+  const profilePath = '/tasker-profile';
 
   const menuItems: MenuItem[] = [
     { path: '/', label: 'Home', icon: <Home className="w-5 h-5" />, end: true },
     { path: '/task-hatch', label: 'TaskHatch', icon: <Zap className="w-5 h-5" /> },
     { path: '/neural-task-gateway', label: 'Neural Gateway', icon: <Network className="w-5 h-5" /> },
     { path: '/task-dashboard', label: 'Task Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+    ...(currentUser
+      ? [
+          {
+            path: profilePath,
+            label: 'Tasker Profile',
+            icon: <UserCircle2 className="w-5 h-5" />,
+          },
+        ]
+      : []),
     { path: '/about', label: 'About', icon: <Info className="w-5 h-5" /> },
     { path: '/contact', label: 'Contact', icon: <Mail className="w-5 h-5" /> },
   ];
@@ -51,6 +62,12 @@ const TaskPane = () => {
   };
 
   const handleItemClick = () => {
+    setIsOpen(false);
+    setIsHovered(false);
+  };
+
+  const handleProfileNavigate = () => {
+    navigate(profilePath);
     setIsOpen(false);
     setIsHovered(false);
   };
@@ -195,9 +212,13 @@ const TaskPane = () => {
               <div className="space-y-1">
                 <div className="px-4 py-3 rounded-lg bg-white/5 border border-purple-400/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-indigo-400 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <button
+                      onClick={handleProfileNavigate}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-indigo-400 flex items-center justify-center shadow-lg flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-300/60"
+                      aria-label="View profile"
+                    >
                       <User className="w-5 h-5 text-white" />
-                    </div>
+                    </button>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white truncate">
                         {currentUser.displayName || currentUser.email?.split('@')[0] || 'User'}
@@ -208,6 +229,12 @@ const TaskPane = () => {
                         </p>
                       )}
                     </div>
+                    <button
+                      onClick={handleProfileNavigate}
+                      className="text-xs text-purple-100 hover:text-white underline underline-offset-4 transition"
+                    >
+                      View
+                    </button>
                   </div>
                 </div>
                 <button
