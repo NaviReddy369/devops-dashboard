@@ -43,7 +43,7 @@ const NeuralTaskGateway = () => {
       setLoading(true);
       setSuccess(false);
 
-      const requestRef = await addDoc(collection(db, 'neuralTasks'), {
+      await addDoc(collection(db, 'neuralTasks'), {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { addDoc, collection, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
 import { BrainCircuit, ClipboardList, Rocket, Shield, Target, Timer, Loader } from 'lucide-react';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -63,7 +63,6 @@ const TaskHatch = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [submittedTaskId, setSubmittedTaskId] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
 
   const readinessScore = useMemo(() => {
@@ -138,7 +137,6 @@ const TaskHatch = () => {
         updatedAt: serverTimestamp()
       });
 
-      setSubmittedTaskId(taskRef.id);
       setSuccess(true);
 
       // Trigger AI Analysis

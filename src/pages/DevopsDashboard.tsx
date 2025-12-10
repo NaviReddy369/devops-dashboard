@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Sparkles, Heart, TrendingUp, Users, Briefcase, Star, Moon, Sun } from 'lucide-react';
 
 interface FormData {

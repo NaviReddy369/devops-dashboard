@@ -11,7 +11,6 @@ import {
   Network, 
   AlertTriangle, 
   CheckCircle, 
-  ArrowRight,
   Clock,
   TrendingUp
 } from 'lucide-react';

@@ -17,7 +17,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Brain, Clock, User, CheckCircle, XCircle, MessageSquare, Send } from 'lucide-react';
+import { Brain, User, CheckCircle, MessageSquare, Send } from 'lucide-react';
 
 interface NeuralRequest {
   id: string;

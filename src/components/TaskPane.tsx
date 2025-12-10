@@ -2,10 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Menu,
-  X,
   Home,
-  Briefcase,
   Zap,
   Network,
   LayoutDashboard,
