@@ -10,8 +10,13 @@ const Layout = () => {
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       <header className="border-b border-white/10 bg-black/30 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <NavLink to="/" className="text-lg font-semibold text-purple-100 hover:text-white">
-            GNK Continuum
+          <NavLink to="/" className="flex items-center gap-3 text-lg font-semibold text-purple-100 hover:text-white transition">
+            <img 
+              src="/logo192.png" 
+              alt="GNK Continuum Logo" 
+              className="w-8 h-8 object-contain"
+            />
+            <span>GNK Continuum</span>
           </NavLink>
           
           {/* Task Pane - Show on all pages except home (home has its own) */}
