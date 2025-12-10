@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { Link } from 'react-router-dom';
-import { Rocket } from 'lucide-react';
+import { Settings, Zap } from 'lucide-react';
 import TaskPane from '../components/TaskPane';
 import FuturisticAnimation from '../components/FuturisticAnimation';
 
@@ -31,19 +31,16 @@ const Home = () => {
           </p>
         </div>
         
-        <div className="flex items-center justify-center gap-4 flex-wrap pt-4">
+        <div className="flex items-center justify-center pt-6">
           <Link
             to="/task-hatch"
-            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl text-white font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-105"
+            className="group relative inline-flex items-center gap-3 px-8 py-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full text-white font-medium text-base hover:bg-white/10 hover:border-white/20 transition-all duration-500 ease-out hover:shadow-[0_8px_30px_rgb(168,85,247,0.3)]"
           >
-            <Rocket className="w-5 h-5" />
-            Get Started
-          </Link>
-          <Link
-            to="/services"
-            className="px-8 py-4 border-2 border-purple-400/50 rounded-xl text-purple-100 font-semibold hover:border-purple-300 hover:text-white hover:bg-purple-500/10 transition-all duration-300"
-          >
-            Explore Services
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-white/10 group-hover:from-purple-500/30 group-hover:to-indigo-500/30 transition-all duration-500">
+              <Settings className="w-4 h-4 text-purple-300 group-hover:text-purple-200 transition-colors" />
+            </div>
+            <span className="relative">Setup Your Task Environment</span>
+            <Zap className="w-4 h-4 text-purple-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-500" />
           </Link>
         </div>
       </div>
