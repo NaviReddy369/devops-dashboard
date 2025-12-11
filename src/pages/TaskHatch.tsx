@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { addDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
-import { BrainCircuit, ClipboardList, Rocket, Shield, Target, Timer, Loader } from 'lucide-react';
+import { BrainCircuit, ClipboardList, Rocket, Shield, Target, Timer, Loader, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { getAIAnalysisService } from '../services/ai/aiAnalysisService';
@@ -206,29 +206,38 @@ const TaskHatch = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white px-4 py-10">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-500/20 rounded-2xl border border-purple-400/30">
-              <BrainCircuit className="w-8 h-8 text-purple-200" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-white relative overflow-hidden">
+      {/* Animated background */}
+      <div className="fixed inset-0 opacity-20 pointer-events-none">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-10 md:py-12">
+        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-2xl border border-purple-400/30">
+              <BrainCircuit className="w-8 h-8 text-purple-300" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">TaskHatch</h1>
-              <p className="text-purple-200 text-sm">
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-300 bg-clip-text text-transparent">
+                TaskHatch
+              </h1>
+              <p className="text-purple-200/80 text-sm md:text-base mt-1">
                 High-fidelity task intake that captures context, risk, and delivery signals.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 border border-purple-300/20">
-            <Target className="w-5 h-5 text-green-300" />
+          <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-900/30 to-purple-900/30 backdrop-blur-xl rounded-xl px-4 py-3 border border-emerald-500/30">
+            <Target className="w-5 h-5 text-emerald-300" />
             <div>
-              <p className="text-xs text-purple-200 uppercase tracking-wide">Readiness</p>
-              <p className="text-lg font-semibold text-green-200">{readinessScore}%</p>
+              <p className="text-xs text-purple-200/70 uppercase tracking-wide">Readiness</p>
+              <p className="text-lg font-semibold text-emerald-200">{readinessScore}%</p>
             </div>
             <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden w-32">
               <div
-                className="h-full bg-gradient-to-r from-emerald-400 to-purple-500"
+                className="h-full bg-gradient-to-r from-emerald-400 to-purple-500 transition-all duration-500"
                 style={{ width: `${readinessScore}%` }}
               />
             </div>
@@ -238,10 +247,10 @@ const TaskHatch = () => {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <section className="bg-white/5 border border-purple-300/20 rounded-2xl p-6 space-y-6">
-                <div className="flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5 text-purple-200" />
-                  <h2 className="text-lg font-semibold">Task DNA</h2>
+              <section className="bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-purple-900/30 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 md:p-8 space-y-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <ClipboardList className="w-5 h-5 text-purple-300" />
+                  <h2 className="text-lg font-semibold text-purple-200">Task DNA</h2>
                 </div>
                 {renderInput('Title', formData.title, (val) => setFormData({ ...formData, title: val }), {
                   required: true,
@@ -260,7 +269,7 @@ const TaskHatch = () => {
                     onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                     required
                     rows={4}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50 resize-none"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 resize-none transition-all"
                     placeholder="What needs to be built, edge cases, data sources, artifacts..."
                   />
                 </div>
@@ -273,7 +282,7 @@ const TaskHatch = () => {
                     onChange={(e) => setFormData({ ...formData, acceptanceCriteria: e.target.value })}
                     required
                     rows={3}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50 resize-none"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 resize-none transition-all"
                     placeholder="Define done: tests, approvals, performance thresholds, rollout steps."
                   />
                 </div>
@@ -286,7 +295,7 @@ const TaskHatch = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, priority: e.target.value as Priority })
                       }
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white transition-all"
                     >
                       <option value="low" className="bg-slate-900">Low</option>
                       <option value="medium" className="bg-slate-900">Medium</option>
@@ -301,7 +310,7 @@ const TaskHatch = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, urgency: e.target.value as Urgency })
                       }
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white transition-all"
                     >
                       <option value="immediate" className="bg-slate-900">Immediate</option>
                       <option value="24h" className="bg-slate-900">Next 24 hours</option>
@@ -327,7 +336,7 @@ const TaskHatch = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, environment: e.target.value as Environment })
                       }
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white transition-all"
                     >
                       <option value="development" className="bg-slate-900">Development</option>
                       <option value="staging" className="bg-slate-900">Staging</option>
@@ -338,10 +347,10 @@ const TaskHatch = () => {
                 </div>
               </section>
 
-              <section className="bg-white/5 border border-purple-300/20 rounded-2xl p-6 space-y-6">
+              <section className="bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-indigo-900/30 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-6 md:p-8 space-y-6">
                 <div className="flex items-center gap-2">
-                  <Rocket className="w-5 h-5 text-purple-200" />
-                  <h2 className="text-lg font-semibold">Execution signals</h2>
+                  <Rocket className="w-5 h-5 text-indigo-300" />
+                  <h2 className="text-lg font-semibold text-purple-200">Execution signals</h2>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -399,7 +408,7 @@ const TaskHatch = () => {
                           dataSensitivity: e.target.value as TaskHatchForm['dataSensitivity']
                         })
                       }
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white transition-all"
                     >
                       <option value="public" className="bg-slate-900">Public</option>
                       <option value="internal" className="bg-slate-900">Internal</option>
@@ -409,11 +418,11 @@ const TaskHatch = () => {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 bg-white/5 border border-purple-300/20 rounded-xl p-4">
-                    <Shield className="w-5 h-5 text-purple-200" />
+                  <div className="flex items-center gap-3 bg-gradient-to-br from-purple-900/20 to-indigo-900/20 border border-purple-500/20 rounded-xl p-4">
+                    <Shield className="w-5 h-5 text-purple-300" />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold">Security review</p>
-                      <p className="text-xs text-purple-200/80">Flag if security/privacy review is required.</p>
+                      <p className="text-sm font-semibold text-purple-200">Security review</p>
+                      <p className="text-xs text-purple-200/70">Flag if security/privacy review is required.</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -426,11 +435,11 @@ const TaskHatch = () => {
                       <span className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></span>
                     </label>
                   </div>
-                  <div className="flex items-center gap-3 bg-white/5 border border-purple-300/20 rounded-xl p-4">
-                    <Timer className="w-5 h-5 text-purple-200" />
+                  <div className="flex items-center gap-3 bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-xl p-4">
+                    <Timer className="w-5 h-5 text-indigo-300" />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold">Blocked on external factors?</p>
-                      <p className="text-xs text-purple-200/80">Dependencies, approvals, vendor SLAs.</p>
+                      <p className="text-sm font-semibold text-purple-200">Blocked on external factors?</p>
+                      <p className="text-xs text-purple-200/70">Dependencies, approvals, vendor SLAs.</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -451,7 +460,7 @@ const TaskHatch = () => {
                     value={formData.dependencies}
                     onChange={(e) => setFormData({ ...formData, dependencies: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50 resize-none"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 resize-none transition-all"
                     placeholder="Systems impacted, upstream/downstream owners, migration concerns..."
                   />
                 </div>
@@ -462,7 +471,7 @@ const TaskHatch = () => {
                     type="text"
                     value={formData.tags}
                     onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 transition-all"
                     placeholder="Comma separated: onboarding, api, infra"
                   />
                   {parsedTags.length > 0 && (
@@ -482,9 +491,16 @@ const TaskHatch = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/30 disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg shadow-purple-500/50 disabled:opacity-60 flex items-center justify-center gap-2 hover:scale-[1.02]"
                 >
-                  {loading ? 'Submitting...' : 'Submit to TaskHatch'}
+                  {loading ? (
+                    <>
+                      <Loader className="w-5 h-5 animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    'Submit to TaskHatch'
+                  )}
                 </button>
               </section>
             </form>
@@ -492,38 +508,61 @@ const TaskHatch = () => {
 
           <aside className="space-y-4">
             {error && (
-              <div className="p-4 bg-red-500/20 border border-red-400/40 rounded-xl text-red-100 text-sm">
-                {error}
+              <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
             )}
             {success && !analyzing && !aiAnalysis && (
-              <div className="p-4 bg-green-500/20 border border-green-400/40 rounded-xl text-green-100 text-sm">
-                Task captured. AI analysis is processing...
+              <div className="p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-green-200 text-sm flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <span>Task captured. AI analysis is processing...</span>
               </div>
             )}
             {analyzing && (
-              <div className="p-4 bg-blue-500/20 border border-blue-400/40 rounded-xl text-blue-100 text-sm flex items-center gap-2">
-                <Loader className="w-4 h-4 animate-spin" />
+              <div className="p-4 bg-blue-500/20 border border-blue-500/50 rounded-xl text-blue-200 text-sm flex items-center gap-3">
+                <Loader className="w-5 h-5 animate-spin flex-shrink-0" />
                 <span>AI is analyzing your task. This may take a moment...</span>
               </div>
             )}
 
-            <div className="bg-white/5 border border-purple-300/20 rounded-2xl p-5 space-y-3">
-              <h3 className="font-semibold text-purple-100">Intake checklist</h3>
-              <ul className="space-y-2 text-sm text-purple-200">
-                <li>Clear objective and acceptance criteria defined.</li>
-                <li>Links to repo/specs and owners included.</li>
-                <li>Risks and dependencies acknowledged.</li>
-                <li>Environment and data sensitivity declared.</li>
+            <div className="bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-purple-900/30 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-5 md:p-6 space-y-3">
+              <h3 className="font-semibold text-purple-200 text-lg">Intake checklist</h3>
+              <ul className="space-y-2.5 text-sm text-purple-200/90">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Clear objective and acceptance criteria defined.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Links to repo/specs and owners included.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Risks and dependencies acknowledged.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Environment and data sensitivity declared.</span>
+                </li>
               </ul>
             </div>
 
-            <div className="bg-white/5 border border-purple-300/20 rounded-2xl p-5 space-y-3">
-              <h3 className="font-semibold text-purple-100">Fast-lane tips</h3>
-              <div className="space-y-2 text-sm text-purple-200">
-                <p>- Add rollout/rollback notes inside acceptance criteria.</p>
-                <p>- Provide Slack/Teams channel for live coordination.</p>
-                <p>- Note any required reviewers to unblock earlier.</p>
+            <div className="bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-indigo-900/30 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-5 md:p-6 space-y-3">
+              <h3 className="font-semibold text-purple-200 text-lg">Fast-lane tips</h3>
+              <div className="space-y-2.5 text-sm text-purple-200/90">
+                <p className="flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-pink-400 flex-shrink-0 mt-0.5" />
+                  <span>Add rollout/rollback notes inside acceptance criteria.</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-pink-400 flex-shrink-0 mt-0.5" />
+                  <span>Provide Slack/Teams channel for live coordination.</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-pink-400 flex-shrink-0 mt-0.5" />
+                  <span>Note any required reviewers to unblock earlier.</span>
+                </p>
               </div>
             </div>
           </aside>
@@ -532,10 +571,10 @@ const TaskHatch = () => {
         {/* AI Analysis Results */}
         {aiAnalysis && (
           <div className="mt-8">
-            <div className="bg-white/5 border border-purple-300/20 rounded-2xl p-6">
+            <div className="bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-purple-900/30 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
                 <BrainCircuit className="w-8 h-8 text-purple-300" />
-                <h2 className="text-2xl font-bold text-purple-100">AI Analysis Complete</h2>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">AI Analysis Complete</h2>
               </div>
               <AIAnalysisDisplay analysis={aiAnalysis} />
             </div>

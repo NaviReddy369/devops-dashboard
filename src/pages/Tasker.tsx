@@ -341,7 +341,7 @@ const Tasker: React.FC = () => {
       <div className="relative z-10">
         {/* Hero Section */}
         <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-500/20 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-500/20 via-transparent to-transparent pointer-events-none" />
           <div className="max-w-7xl mx-auto px-4 py-16 md:py-24">
             <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
               {/* Avatar & Basic Info */}

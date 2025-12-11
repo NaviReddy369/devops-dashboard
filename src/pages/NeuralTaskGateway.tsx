@@ -59,7 +59,7 @@ const NeuralTaskGateway = () => {
         rejectionReason: null,
         messages: [],
         lastActivityAt: serverTimestamp(),
-        taskId: null, // Can link to a TaskHatch task if needed
+        taskId: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -73,7 +73,6 @@ const NeuralTaskGateway = () => {
         estimatedHours: ''
       });
 
-      // Reset success message after 5 seconds
       setTimeout(() => setSuccess(false), 5000);
     } catch (err: any) {
       setError(err.message || 'Failed to submit task. Please try again.');
@@ -83,24 +82,31 @@ const NeuralTaskGateway = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white px-4 py-12">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-white relative overflow-hidden">
+      {/* Animated background */}
+      <div className="fixed inset-0 opacity-20 pointer-events-none">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-12 md:py-16">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Brain className="w-12 h-12 text-purple-300 animate-pulse" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 bg-clip-text text-transparent">
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <Brain className="w-12 h-12 text-purple-400 animate-pulse" />
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-300 bg-clip-text text-transparent">
               Neural Task Gateway
             </h1>
-            <Sparkles className="w-12 h-12 text-pink-300 animate-pulse" />
+            <Sparkles className="w-12 h-12 text-pink-400 animate-pulse" />
           </div>
-          <p className="text-purple-200 text-lg">
+          <p className="text-lg md:text-xl text-purple-200/80 max-w-2xl mx-auto">
             Submit intelligent task requests to our AI-powered workflow orchestrator
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/30 shadow-2xl">
+        <div className="bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-purple-900/30 backdrop-blur-xl border border-purple-500/30 rounded-3xl p-8 md:p-10 shadow-2xl">
           {error && (
             <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-200">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -118,7 +124,7 @@ const NeuralTaskGateway = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Task Title */}
             <div>
-              <label className="block text-purple-200 mb-2 font-medium">
+              <label className="block text-purple-200 mb-2 font-semibold">
                 Task Title <span className="text-red-400">*</span>
               </label>
               <input
@@ -126,14 +132,14 @@ const NeuralTaskGateway = () => {
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 transition-all"
                 placeholder="Enter a clear, descriptive task title"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-purple-200 mb-2 font-medium">
+              <label className="block text-purple-200 mb-2 font-semibold">
                 Task Description <span className="text-red-400">*</span>
               </label>
               <textarea
@@ -141,7 +147,7 @@ const NeuralTaskGateway = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 required
                 rows={6}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50 resize-none"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 resize-none transition-all"
                 placeholder="Provide detailed information about the task, requirements, and expected outcomes..."
               />
             </div>
@@ -150,27 +156,27 @@ const NeuralTaskGateway = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Priority */}
               <div>
-                <label className="block text-purple-200 mb-2 font-medium">Priority Level</label>
+                <label className="block text-purple-200 mb-2 font-semibold">Priority Level</label>
                 <select
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value as TaskFormData['priority'] })}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white transition-all"
                 >
-                  <option value="low" className="bg-slate-800">Low</option>
-                  <option value="medium" className="bg-slate-800">Medium</option>
-                  <option value="high" className="bg-slate-800">High</option>
-                  <option value="critical" className="bg-slate-800">Critical</option>
+                  <option value="low" className="bg-slate-900">Low</option>
+                  <option value="medium" className="bg-slate-900">Medium</option>
+                  <option value="high" className="bg-slate-900">High</option>
+                  <option value="critical" className="bg-slate-900">Critical</option>
                 </select>
               </div>
 
               {/* Category */}
               <div>
-                <label className="block text-purple-200 mb-2 font-medium">Category</label>
+                <label className="block text-purple-200 mb-2 font-semibold">Category</label>
                 <input
                   type="text"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 transition-all"
                   placeholder="e.g., Development, Design, Analysis"
                 />
               </div>
@@ -178,13 +184,13 @@ const NeuralTaskGateway = () => {
 
             {/* Estimated Hours */}
             <div>
-              <label className="block text-purple-200 mb-2 font-medium">Estimated Hours (Optional)</label>
+              <label className="block text-purple-200 mb-2 font-semibold">Estimated Hours (Optional)</label>
               <input
                 type="number"
                 min="1"
                 value={formData.estimatedHours}
                 onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none text-white placeholder-purple-300/50"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-300/30 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white placeholder-purple-300/50 transition-all"
                 placeholder="Estimated time to complete (hours)"
               />
             </div>
@@ -193,7 +199,7 @@ const NeuralTaskGateway = () => {
             <button
               type="submit"
               disabled={loading || !currentUser}
-              className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-[1.02]"
             >
               {loading ? (
                 <>
@@ -217,19 +223,19 @@ const NeuralTaskGateway = () => {
         </div>
 
         {/* Info Section */}
-        <div className="mt-8 bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-purple-300/20">
-          <h3 className="text-xl font-semibold mb-3 text-purple-200">How it works</h3>
-          <ul className="space-y-2 text-purple-100 text-sm">
-            <li className="flex items-start gap-2">
-              <span className="text-purple-300 mt-1">•</span>
+        <div className="mt-8 bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-indigo-900/30 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-6 md:p-8">
+          <h3 className="text-xl md:text-2xl font-semibold mb-4 text-purple-200">How it works</h3>
+          <ul className="space-y-3 text-purple-200/90 text-sm md:text-base">
+            <li className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
               <span>Your task is automatically queued in our AI-powered workflow system</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="text-purple-300 mt-1">•</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
               <span>Tasks are prioritized and assigned based on urgency and resource availability</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="text-purple-300 mt-1">•</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
               <span>You'll receive updates as your task progresses through the neural processing pipeline</span>
             </li>
           </ul>
@@ -240,4 +246,3 @@ const NeuralTaskGateway = () => {
 };
 
 export default NeuralTaskGateway;
-
