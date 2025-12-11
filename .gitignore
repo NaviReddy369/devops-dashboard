@@ -40,3 +40,18 @@ lerna-debug.log*
 
 # OS
 Thumbs.db
+
+# Python virtual environments
+functions/venv/
+functions/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+functions/*.egg-info/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

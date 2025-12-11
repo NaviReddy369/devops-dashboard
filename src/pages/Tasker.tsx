@@ -110,8 +110,9 @@ const Tasker: React.FC = () => {
     try {
       setLoadingAnalytics(true);
       const result = await generateDashboardData({});
-      if (result.data && result.data.success) {
-        setDashboardData(result.data.data);
+      const data = result.data as any;
+      if (data && data.success) {
+        setDashboardData(data.data);
       }
     } catch (err) {
       console.error('Error loading analytics:', err);
@@ -307,12 +308,12 @@ const Tasker: React.FC = () => {
 
   // Extract file URLs from projects (assuming they're stored in a structured way)
   const getProjectFiles = (project: any) => {
-    const files: Array<{ url: string; name: string; type: 'csv' | 'py' | 'pdf' | 'image' }> = [];
+    const files: Array<{ url: string; fileName: string; type: 'csv' | 'py' | 'pdf' | 'image' }> = [];
     
     // Project images
     if (project.images && Array.isArray(project.images)) {
       project.images.forEach((img: string, idx: number) => {
-        files.push({ url: img, name: `Image ${idx + 1}`, type: 'image' });
+        files.push({ url: img, fileName: `Image ${idx + 1}`, type: 'image' });
       });
     }
     
@@ -320,9 +321,9 @@ const Tasker: React.FC = () => {
     // For now, we'll extract them from URLs if they match patterns
     if (project.url) {
       const url = project.url.toLowerCase();
-      if (url.includes('.csv')) files.push({ url: project.url, name: 'Data File', type: 'csv' });
-      if (url.includes('.py')) files.push({ url: project.url, name: 'Code File', type: 'py' });
-      if (url.includes('.pdf')) files.push({ url: project.url, name: 'Documentation', type: 'pdf' });
+      if (url.includes('.csv')) files.push({ url: project.url, fileName: 'Data File', type: 'csv' });
+      if (url.includes('.py')) files.push({ url: project.url, fileName: 'Code File', type: 'py' });
+      if (url.includes('.pdf')) files.push({ url: project.url, fileName: 'Documentation', type: 'pdf' });
     }
     
     return files;
@@ -491,7 +492,7 @@ const Tasker: React.FC = () => {
                                   cx="50%"
                                   cy="50%"
                                   labelLine={false}
-                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                  label={({ name, percent }: { name?: string; percent?: number }) => `${name || 'Unknown'} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                                   outerRadius={80}
                                   fill="#8884d8"
                                   dataKey="value"
@@ -926,8 +927,8 @@ const Tasker: React.FC = () => {
                             Issued: {new Date(cert.issueDate).toLocaleDateString()}
                           </p>
                         )}
-                        {(cert.credentialUrl || cert.certificateUrl) && (
-                          <LinkBadge url={cert.credentialUrl || cert.certificateUrl || ''} label="View Certificate" icon={<Eye className="w-3 h-3" />} />
+                        {cert.credentialUrl && (
+                          <LinkBadge url={cert.credentialUrl} label="View Certificate" icon={<Eye className="w-3 h-3" />} />
                         )}
                       </div>
                     ))}
