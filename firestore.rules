@@ -51,6 +51,24 @@ service cloud.firestore {
       allow delete: if false;
     }
     
+    // Tasker Profiles collection
+    match /taskerProfiles/{profileId} {
+      // Allow authenticated users to read any profile (for matching/discovery)
+      allow read: if request.auth != null;
+      
+      // Users can create their own profile
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update only their own profile
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // Prevent deletion (or allow only by admins in future)
+      allow delete: if false;
+    }
+    
     // Default: deny all other collections
     match /{document=**} {
       allow read, write: if false;

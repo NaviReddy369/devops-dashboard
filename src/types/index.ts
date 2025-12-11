@@ -360,6 +360,264 @@ export interface NeuralRequestForm {
 }
 
 // ============================================================================
+// TASKER PROFILE TYPES
+// ============================================================================
+
+export type TaskerStatus = 'incomplete' | 'pending' | 'approved' | 'active' | 'suspended';
+export type TaskAchieverStatus = 'not-eligible' | 'eligible' | 'pending-approval' | 'approved' | 'active';
+export type ExperienceLevel = 'entry' | 'junior' | 'mid' | 'senior' | 'expert';
+export type AvailabilityPreference = 'full-time' | 'part-time' | 'contract' | 'freelance' | 'on-demand';
+export type WorkLocationPreference = 'remote' | 'on-site' | 'hybrid' | 'flexible';
+
+export interface TaskerProfile {
+  id: string;
+  userId: string;
+  userEmail: string;
+  
+  // Profile Status
+  status: TaskerStatus;
+  taskAchieverStatus: TaskAchieverStatus;
+  completionPercentage: number;
+  isTaskAchieverEligible: boolean;
+  
+  // Personal Information
+  personalInfo: {
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    profilePhoto?: string;
+    phone?: string;
+    location?: string;
+    timezone?: string;
+    bio?: string;
+  };
+  
+  // Professional Information
+  professionalInfo: {
+    title: string;
+    experienceLevel: ExperienceLevel;
+    yearsOfExperience: number;
+    currentRole?: string;
+    company?: string;
+    linkedInUrl?: string;
+    portfolioUrl?: string;
+    githubUrl?: string;
+  };
+  
+  // Skills & Expertise
+  skills: {
+    primary: string[]; // Core skills
+    secondary: string[]; // Additional skills
+    certifications: Certification[];
+    languages: Language[];
+  };
+  
+  // Work Preferences
+  workPreferences: {
+    availability: AvailabilityPreference;
+    location: WorkLocationPreference;
+    preferredHoursPerWeek?: number;
+    hourlyRate?: number;
+    currency?: string;
+    minimumTaskBudget?: number;
+    availabilitySchedule?: AvailabilitySchedule;
+    fastTrackAvailable: boolean;
+  };
+  
+  // Specialties & Services
+  specialties: string[];
+  services: ServiceOffering[];
+  
+  // Portfolio & Experience
+  portfolio: {
+    projects: Project[];
+    achievements: Achievement[];
+    testimonials: Testimonial[];
+  };
+  
+  // Task Performance Metrics
+  metrics: {
+    tasksCompleted: number;
+    tasksInProgress: number;
+    averageRating: number;
+    totalRatings: number;
+    slaReliability: number; // percentage
+    averageTurnaroundHours: number;
+    qualityScore: number; // 0-5
+    responseTimeHours: number;
+  };
+  
+  // TaskAchiever Eligibility Criteria
+  taskAchieverCriteria: {
+    minimumTasksCompleted: number;
+    minimumRating: number;
+    minimumSlaReliability: number;
+    minimumCompletionRate: number;
+    verifiedSkills: string[];
+    certificationsRequired: string[];
+    isVerified: boolean;
+    verificationDate?: Date;
+  };
+  
+  // Timestamps
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  lastActiveAt: Timestamp;
+  profileCompletedAt?: Timestamp;
+  taskAchieverApprovedAt?: Timestamp;
+}
+
+export interface Certification {
+  id: string;
+  name: string;
+  issuer: string;
+  issueDate: Date;
+  expiryDate?: Date;
+  credentialId?: string;
+  credentialUrl?: string;
+  verified: boolean;
+}
+
+export interface Language {
+  code: string;
+  name: string;
+  proficiency: 'basic' | 'conversational' | 'professional' | 'native';
+}
+
+export interface AvailabilitySchedule {
+  timezone: string;
+  days: {
+    monday?: DaySchedule;
+    tuesday?: DaySchedule;
+    wednesday?: DaySchedule;
+    thursday?: DaySchedule;
+    friday?: DaySchedule;
+    saturday?: DaySchedule;
+    sunday?: DaySchedule;
+  };
+}
+
+export interface DaySchedule {
+  available: boolean;
+  startTime?: string; // HH:mm format
+  endTime?: string; // HH:mm format
+  notes?: string;
+}
+
+export interface ServiceOffering {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  hourlyRate?: number;
+  fixedRate?: number;
+  estimatedHours?: number;
+  isActive: boolean;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  technologies: string[];
+  duration: string;
+  role: string;
+  outcome?: string;
+  url?: string;
+  images?: string[];
+  isPublic: boolean;
+  completedAt: Date;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  date: Date;
+  metrics?: string;
+  proofUrl?: string;
+}
+
+export interface Testimonial {
+  id: string;
+  clientName: string;
+  clientRole?: string;
+  clientCompany?: string;
+  content: string;
+  rating: number;
+  date: Date;
+  projectTitle?: string;
+  verified: boolean;
+}
+
+// TaskerMeta Form Data Structure (for form collection)
+export interface TaskerMetaForm {
+  // Step 1: Personal Information
+  personalInfo: {
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    phone?: string;
+    location?: string;
+    timezone?: string;
+    bio?: string;
+  };
+  
+  // Step 2: Professional Information
+  professionalInfo: {
+    title: string;
+    experienceLevel: ExperienceLevel;
+    yearsOfExperience: number;
+    currentRole?: string;
+    company?: string;
+    linkedInUrl?: string;
+    portfolioUrl?: string;
+    githubUrl?: string;
+  };
+  
+  // Step 3: Skills & Expertise
+  skills: {
+    primary: string[];
+    secondary: string[];
+    certifications: Omit<Certification, 'id' | 'verified'>[];
+    languages: Language[];
+  };
+  
+  // Step 4: Work Preferences
+  workPreferences: {
+    availability: AvailabilityPreference;
+    location: WorkLocationPreference;
+    preferredHoursPerWeek?: number;
+    hourlyRate?: number;
+    currency?: string;
+    minimumTaskBudget?: number;
+    timezone?: string;
+    schedule: {
+      monday?: DaySchedule;
+      tuesday?: DaySchedule;
+      wednesday?: DaySchedule;
+      thursday?: DaySchedule;
+      friday?: DaySchedule;
+      saturday?: DaySchedule;
+      sunday?: DaySchedule;
+    };
+    fastTrackAvailable: boolean;
+  };
+  
+  // Step 5: Specialties & Services
+  specialties: string[];
+  services: Omit<ServiceOffering, 'id' | 'isActive'>[];
+  
+  // Step 6: Portfolio
+  portfolio: {
+    projects: Omit<Project, 'id' | 'isPublic'>[];
+    achievements: Omit<Achievement, 'id'>[];
+  };
+}
+
+// ============================================================================
 // UTILITY TYPES
 // ============================================================================
 

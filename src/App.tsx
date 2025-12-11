@@ -14,6 +14,7 @@ import TaskDashboard from './pages/TaskDashboard';
 import TaskHatch from './pages/TaskHatch';
 import AgentDashboard from './pages/AgentDashboard';
 import TaskerProfile from './pages/TaskerProfile';
+import TaskerMeta from './pages/TaskerMeta';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
@@ -54,6 +55,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <TaskerProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="tasker-meta"
+          element={
+            <ProtectedRoute>
+              <TaskerMeta />
             </ProtectedRoute>
           }
         />

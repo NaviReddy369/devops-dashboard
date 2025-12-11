@@ -34,6 +34,7 @@ export const COLLECTIONS = {
   NEURAL_REQUESTS: 'neuralRequests',
   NEURAL_TASKS: 'neuralTasks',
   ASSIGNMENTS: 'assignments',
+  TASKER_PROFILES: 'taskerProfiles',
 } as const;
 
 // ============================================================================
