@@ -19,6 +19,8 @@ import {
   Github,
   Globe,
   Award,
+  Share2,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -195,6 +197,17 @@ const TaskerProfile: React.FC = () => {
               <Mail className="w-4 h-4" />
               {email}
             </a>
+            {profile && (
+              <a
+                href={`/tasker/${currentUser?.uid}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500/20 border border-indigo-400/30 hover:bg-indigo-500/30 transition"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View Public Profile
+              </a>
+            )}
             <button
               onClick={() => navigate('/tasker-meta')}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 border border-purple-400/30 hover:bg-purple-500/30 transition"

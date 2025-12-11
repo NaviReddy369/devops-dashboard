@@ -15,6 +15,7 @@ import TaskHatch from './pages/TaskHatch';
 import AgentDashboard from './pages/AgentDashboard';
 import TaskerProfile from './pages/TaskerProfile';
 import TaskerMeta from './pages/TaskerMeta';
+import Tasker from './pages/Tasker';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
@@ -66,6 +67,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="tasker/:userId" element={<Tasker />} />
         <Route
           path="task-hatch"
           element={

@@ -1,15 +1,11 @@
 ﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { Settings, Zap } from 'lucide-react';
-import TaskPane from '../components/TaskPane';
 import FuturisticAnimation from '../components/FuturisticAnimation';
 
 const Home = () => {
   return (
     <div className="h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white flex flex-col px-4 relative overflow-hidden">
-      {/* Task Pane Component */}
-      <TaskPane />
-      
       {/* Main Content Layout */}
       <div className="flex-1 flex flex-col items-center justify-between py-4 md:py-6 relative z-10 min-h-0">
         {/* Top Section - Text Information */}

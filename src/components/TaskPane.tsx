@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getTaskerProfileByUserId } from '../api/taskerProfiles';
 import {
   Home,
   Zap,
@@ -13,6 +14,7 @@ import {
   User,
   ChevronRight,
   UserCircle2,
+  Sparkles,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -25,10 +27,30 @@ interface MenuItem {
 const TaskPane = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
-  const profilePath = '/tasker-profile';
+  const profilePath = '/tasker-meta';
+
+  // Check if user has a completed profile
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (currentUser) {
+        try {
+          const profile = await getTaskerProfileByUserId(currentUser.uid);
+          setHasProfile(!!profile && profile.completionPercentage >= 50);
+        } catch (error) {
+          console.error('Error checking profile:', error);
+          setHasProfile(false);
+        }
+      } else {
+        setHasProfile(false);
+      }
+    };
+    
+    checkProfile();
+  }, [currentUser]);
 
   const menuItems: MenuItem[] = [
     { path: '/', label: 'Home', icon: <Home className="w-5 h-5" />, end: true },
@@ -37,9 +59,18 @@ const TaskPane = () => {
     { path: '/task-dashboard', label: 'Task Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
     ...(currentUser
       ? [
+          ...(hasProfile
+            ? [
+                {
+                  path: `/tasker/${currentUser.uid}`,
+                  label: 'Tasker',
+                  icon: <Sparkles className="w-5 h-5" />,
+                },
+              ]
+            : []),
           {
             path: profilePath,
-            label: 'Tasker Profile',
+            label: 'TaskerMeta',
             icon: <UserCircle2 className="w-5 h-5" />,
           },
         ]
@@ -64,7 +95,7 @@ const TaskPane = () => {
   };
 
   const handleProfileNavigate = () => {
-    navigate(profilePath);
+    navigate('/tasker-meta');
     setIsOpen(false);
     setIsHovered(false);
   };
@@ -109,7 +140,7 @@ const TaskPane = () => {
   return (
     <div 
       ref={menuRef}
-      className="fixed top-4 right-4 z-50 md:top-6 md:right-6"
+      className="relative"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -117,7 +148,7 @@ const TaskPane = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          relative flex items-center justify-center w-12 h-12
+          relative flex items-center justify-center w-12 h-12 z-50
           bg-gradient-to-r from-purple-600/90 via-indigo-600/90 to-purple-600/90
           backdrop-blur-xl border border-purple-400/30
           rounded-xl shadow-2xl shadow-purple-500/30
@@ -159,15 +190,17 @@ const TaskPane = () => {
       {(isOpen || isHovered) && (
         <div
           className={`
-            absolute top-full right-0 mt-3
+            fixed top-20 right-4 md:right-6
             w-72 md:w-80
             bg-gradient-to-br from-slate-900/95 via-indigo-900/95 to-purple-900/95
             backdrop-blur-2xl border border-purple-400/20
             rounded-2xl shadow-2xl shadow-purple-900/50
             overflow-hidden
             transition-all duration-300 ease-out
+            z-[99999]
             ${isOpen || isHovered ? 'opacity-100 translate-y-0 scale-100 task-pane-menu' : 'opacity-0 -translate-y-2 scale-95'}
           `}
+          style={{ zIndex: 99999 }}
         >
           {/* Decorative gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-indigo-500/10 pointer-events-none" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   User,
   Briefcase,
@@ -7,20 +7,29 @@ import {
   Sparkles,
   FolderOpen,
   CheckCircle2,
-  ChevronRight,
-  ChevronLeft,
+  ArrowRight,
+  ArrowLeft,
   Loader,
-  AlertCircle,
-  Plus,
-  X,
+  Save,
+  Zap,
   Globe,
   Linkedin,
   Github,
-  Calendar,
-  DollarSign,
   MapPin,
   Phone,
   Mail,
+  Plus,
+  X,
+  Sparkle,
+  Trophy,
+  Target,
+  TrendingUp,
+  Upload,
+  Image as ImageIcon,
+  FileText,
+  Link as LinkIcon,
+  Calendar,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -29,47 +38,88 @@ import {
   AvailabilityPreference,
   WorkLocationPreference,
   Language,
-  Certification,
-  DaySchedule,
 } from '../types';
 import {
   saveTaskerProfile,
   getTaskerProfileByUserId,
 } from '../api/taskerProfiles';
 import { useNavigate } from 'react-router-dom';
+import { storage } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-const TOTAL_STEPS = 6;
+// Section definitions with conversational prompts
+const SECTIONS = [
+  {
+    id: 'personal',
+    title: "Let's start with the basics",
+    subtitle: 'Tell us about yourself',
+    icon: User,
+    color: 'from-purple-500 to-indigo-500',
+    prompt: "What's your name?",
+  },
+  {
+    id: 'professional',
+    title: 'Your professional journey',
+    subtitle: 'Share your experience',
+    icon: Briefcase,
+    color: 'from-blue-500 to-cyan-500',
+    prompt: 'What do you do?',
+  },
+  {
+    id: 'skills',
+    title: 'Your superpowers',
+    subtitle: 'What are you great at?',
+    icon: Award,
+    color: 'from-amber-500 to-orange-500',
+    prompt: 'What skills define you?',
+  },
+  {
+    id: 'preferences',
+    title: 'How you work',
+    subtitle: 'Your preferences',
+    icon: Clock,
+    color: 'from-emerald-500 to-teal-500',
+    prompt: 'How do you like to work?',
+  },
+  {
+    id: 'specialties',
+    title: 'Your specialties',
+    subtitle: 'What makes you unique?',
+    icon: Sparkles,
+    color: 'from-pink-500 to-rose-500',
+    prompt: 'What are you specialized in?',
+  },
+  {
+    id: 'portfolio',
+    title: 'Showcase your work',
+    subtitle: 'Your achievements',
+    icon: FolderOpen,
+    color: 'from-violet-500 to-fuchsia-500',
+    prompt: 'Share your portfolio',
+  },
+] as const;
 
-const STEP_TITLES = [
-  'Personal Information',
-  'Professional Details',
-  'Skills & Expertise',
-  'Work Preferences',
-  'Specialties & Services',
-  'Portfolio & Achievements',
+const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string; emoji: string }[] = [
+  { value: 'entry', label: 'Getting Started', emoji: '🌱' },
+  { value: 'junior', label: 'Junior Level', emoji: '🚀' },
+  { value: 'mid', label: 'Mid-Level', emoji: '⭐' },
+  { value: 'senior', label: 'Senior', emoji: '🎯' },
+  { value: 'expert', label: 'Expert', emoji: '🏆' },
 ];
 
-const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string; desc: string }[] = [
-  { value: 'entry', label: 'Entry Level', desc: '0-2 years' },
-  { value: 'junior', label: 'Junior', desc: '2-4 years' },
-  { value: 'mid', label: 'Mid-Level', desc: '4-7 years' },
-  { value: 'senior', label: 'Senior', desc: '7-10 years' },
-  { value: 'expert', label: 'Expert', desc: '10+ years' },
+const AVAILABILITY_OPTIONS: { value: AvailabilityPreference; label: string; emoji: string }[] = [
+  { value: 'full-time', label: 'Full-Time', emoji: '💼' },
+  { value: 'part-time', label: 'Part-Time', emoji: '⏰' },
+  { value: 'contract', label: 'Contract', emoji: '📋' },
+  { value: 'freelance', label: 'Freelance', emoji: '🆓' },
+  { value: 'on-demand', label: 'On-Demand', emoji: '⚡' },
 ];
 
-const AVAILABILITY_OPTIONS: { value: AvailabilityPreference; label: string; desc: string }[] = [
-  { value: 'full-time', label: 'Full-Time', desc: '40+ hours/week' },
-  { value: 'part-time', label: 'Part-Time', desc: '20-40 hours/week' },
-  { value: 'contract', label: 'Contract', desc: 'Project-based' },
-  { value: 'freelance', label: 'Freelance', desc: 'Flexible hours' },
-  { value: 'on-demand', label: 'On-Demand', desc: 'As needed' },
-];
-
-const LOCATION_OPTIONS: { value: WorkLocationPreference; label: string; icon: any }[] = [
-  { value: 'remote', label: 'Remote Only', icon: Globe },
-  { value: 'on-site', label: 'On-Site', icon: MapPin },
-  { value: 'hybrid', label: 'Hybrid', icon: Calendar },
-  { value: 'flexible', label: 'Flexible', icon: Clock },
+const LOCATION_OPTIONS: { value: WorkLocationPreference; label: string; emoji: string }[] = [
+  { value: 'remote', label: 'Remote Only', emoji: '🌐' },
+  { value: 'on-site', label: 'On-Site', emoji: '🏢' },
+  { value: 'hybrid', label: 'Hybrid', emoji: '🔄' },
+  { value: 'flexible', label: 'Flexible', emoji: '✨' },
 ];
 
 const TIMEZONES = [
@@ -77,19 +127,11 @@ const TIMEZONES = [
   'America/Los_Angeles',
   'America/New_York',
   'America/Chicago',
-  'America/Denver',
   'Europe/London',
   'Europe/Paris',
-  'Europe/Berlin',
   'Asia/Tokyo',
-  'Asia/Shanghai',
-  'Asia/Dubai',
   'Australia/Sydney',
 ];
-
-const LANGUAGE_PROFICIENCIES = ['basic', 'conversational', 'professional', 'native'] as const;
-
-const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 const initialFormData: TaskerMetaForm = {
   personalInfo: {
@@ -139,14 +181,17 @@ const initialFormData: TaskerMetaForm = {
 const TaskerMeta: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [activeSection, setActiveSection] = useState(0);
   const [formData, setFormData] = useState<TaskerMetaForm>(initialFormData);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [tempSkill, setTempSkill] = useState('');
+  const [skillType, setSkillType] = useState<'primary' | 'secondary'>('primary');
   const [tempSpecialty, setTempSpecialty] = useState('');
+  const [uploadingFiles, setUploadingFiles] = useState<{ [key: string]: boolean }>({});
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadExistingProfile();
@@ -159,7 +204,6 @@ const TaskerMeta: React.FC = () => {
       setLoading(true);
       const profile = await getTaskerProfileByUserId(currentUser.uid);
       if (profile) {
-        // Populate form with existing data
         setFormData({
           personalInfo: profile.personalInfo,
           professionalInfo: profile.professionalInfo,
@@ -209,6 +253,36 @@ const TaskerMeta: React.FC = () => {
     }
   };
 
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!currentUser || saving) return;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        setSaving(true);
+        await saveTaskerProfile(currentUser.uid, currentUser.email || '', formData);
+        setLastSaved(new Date());
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+      } finally {
+        setSaving(false);
+      }
+    }, 1500);
+  }, [currentUser, formData, saving]);
+
+  useEffect(() => {
+    autoSave();
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, autoSave]);
+
   const updateFormData = <K extends keyof TaskerMetaForm>(
     section: K,
     data: Partial<TaskerMetaForm[K]> | TaskerMetaForm[K]
@@ -216,411 +290,399 @@ const TaskerMeta: React.FC = () => {
     setFormData((prev) => {
       const currentValue = prev[section];
       
-      // Handle array types (services, specialties, etc.)
       if (Array.isArray(currentValue) && Array.isArray(data)) {
-        return {
-          ...prev,
-          [section]: data,
-        };
+        return { ...prev, [section]: data };
       }
       
-      // Handle object types
       if (typeof currentValue === 'object' && currentValue !== null && !Array.isArray(currentValue)) {
-        return {
-          ...prev,
-          [section]: { ...currentValue, ...data },
-        };
+        return { ...prev, [section]: { ...currentValue, ...data } };
       }
       
-      // Fallback for primitive types
-      return {
-        ...prev,
-        [section]: data,
-      };
+      return { ...prev, [section]: data };
     });
   };
 
-  const handleNext = () => {
-    if (validateCurrentStep()) {
-      if (currentStep < TOTAL_STEPS) {
-        setCurrentStep(currentStep + 1);
-        setError('');
-      }
+  const navigateSection = (direction: 'next' | 'prev') => {
+    setDirection(direction);
+    if (direction === 'next' && activeSection < SECTIONS.length - 1) {
+      setActiveSection(activeSection + 1);
+    } else if (direction === 'prev' && activeSection > 0) {
+      setActiveSection(activeSection - 1);
     }
   };
 
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-      setError('');
-    }
-  };
-
-  const validateCurrentStep = (): boolean => {
-    setError('');
+  const handleComplete = async () => {
+    if (!currentUser) return;
     
-    switch (currentStep) {
-      case 1:
-        if (!formData.personalInfo.firstName || !formData.personalInfo.lastName || !formData.personalInfo.displayName) {
-          setError('Please fill in all required fields: First Name, Last Name, and Display Name.');
-          return false;
-        }
-        break;
-      case 2:
-        if (!formData.professionalInfo.title || formData.professionalInfo.yearsOfExperience <= 0) {
-          setError('Please provide your professional title and years of experience.');
-          return false;
-        }
-        break;
-      case 3:
-        if (formData.skills.primary.length === 0) {
-          setError('Please add at least one primary skill.');
-          return false;
-        }
-        break;
-      case 4:
-        if (!formData.workPreferences.availability || !formData.workPreferences.location) {
-          setError('Please select your availability and location preferences.');
-          return false;
-        }
-        break;
-      case 5:
-        if (formData.specialties.length === 0) {
-          setError('Please add at least one specialty.');
-          return false;
-        }
-        break;
-      case 6:
-        // Portfolio is optional, but we'll still validate basic fields if they added projects
-        break;
-    }
-    
-    return true;
-  };
-
-  const handleSave = async (final = false) => {
-    if (!currentUser) {
-      setError('Please log in to save your profile.');
-      return;
-    }
-
     try {
       setSaving(true);
-      setError('');
-      
       await saveTaskerProfile(currentUser.uid, currentUser.email || '', formData);
-      
-      if (final) {
-        setSuccess(true);
-        setTimeout(() => {
-          navigate('/tasker-profile');
-        }, 2000);
-      }
+      // Redirect to public Tasker profile page
+      navigate(`/tasker/${currentUser.uid}`);
     } catch (err: any) {
-      setError(err.message || 'Failed to save profile. Please try again.');
+      console.error('Error saving profile:', err);
     } finally {
       setSaving(false);
     }
   };
 
-  const addSkill = (isPrimary: boolean) => {
-    if (!tempSkill.trim()) return;
-    
-    setFormData((prev) => {
-      const skills = isPrimary ? prev.skills.primary : prev.skills.secondary;
-      if (skills.includes(tempSkill.trim())) return prev;
-      
-      return {
-        ...prev,
-        skills: {
-          ...prev.skills,
-          [isPrimary ? 'primary' : 'secondary']: [...skills, tempSkill.trim()],
-        },
-      };
-    });
-    
-    setTempSkill('');
+  const calculateProgress = () => {
+    let completed = 0;
+    let total = 0;
+
+    // Personal
+    total += 3;
+    if (formData.personalInfo.firstName) completed++;
+    if (formData.personalInfo.lastName) completed++;
+    if (formData.personalInfo.displayName) completed++;
+
+    // Professional
+    total += 2;
+    if (formData.professionalInfo.title) completed++;
+    if (formData.professionalInfo.yearsOfExperience > 0) completed++;
+
+    // Skills
+    total += 1;
+    if (formData.skills.primary.length > 0) completed++;
+
+    // Preferences
+    total += 2;
+    if (formData.workPreferences.availability) completed++;
+    if (formData.workPreferences.location) completed++;
+
+    // Specialties
+    total += 1;
+    if (formData.specialties.length > 0) completed++;
+
+    return Math.round((completed / total) * 100);
   };
 
-  const removeSkill = (skill: string, isPrimary: boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      skills: {
-        ...prev.skills,
-        [isPrimary ? 'primary' : 'secondary']: prev.skills[isPrimary ? 'primary' : 'secondary'].filter((s) => s !== skill),
-      },
-    }));
-  };
-
-  const addSpecialty = () => {
-    if (!tempSpecialty.trim()) return;
-    
-    setFormData((prev) => {
-      if (prev.specialties.includes(tempSpecialty.trim())) return prev;
-      return {
-        ...prev,
-        specialties: [...prev.specialties, tempSpecialty.trim()],
-      };
-    });
-    
-    setTempSpecialty('');
-  };
-
-  const removeSpecialty = (specialty: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      specialties: prev.specialties.filter((s) => s !== specialty),
-    }));
+  const isSectionComplete = (sectionId: string): boolean => {
+    switch (sectionId) {
+      case 'personal':
+        return !!(formData.personalInfo.firstName && formData.personalInfo.lastName && formData.personalInfo.displayName);
+      case 'professional':
+        return !!(formData.professionalInfo.title && formData.professionalInfo.yearsOfExperience > 0);
+      case 'skills':
+        return formData.skills.primary.length > 0;
+      case 'preferences':
+        return !!(formData.workPreferences.availability && formData.workPreferences.location);
+      case 'specialties':
+        return formData.specialties.length > 0;
+      case 'portfolio':
+        return true; // Optional
+      default:
+        return false;
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 flex items-center justify-center">
-        <Loader className="w-8 h-8 text-purple-400 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-purple-200">Loading your profile...</p>
+        </div>
       </div>
     );
   }
 
-  const stepIcons = [User, Briefcase, Award, Clock, Sparkles, FolderOpen];
+  const progress = calculateProgress();
+  const currentSection = SECTIONS[activeSection];
+  const SectionIcon = currentSection.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 text-white">
-      <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-white relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Tasker Profile</h1>
-          <p className="text-purple-200/80">
-            Fill in your information to become a tasker and start getting matched with tasks.
-          </p>
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-300 bg-clip-text text-transparent">
+            Build Your Tasker Profile
+          </h1>
+          <p className="text-purple-200/70 text-lg">Let's create something amazing together</p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-purple-200">Step {currentStep} of {TOTAL_STEPS}</span>
-            <span className="text-sm text-purple-200">{Math.round((currentStep / TOTAL_STEPS) * 100)}% Complete</span>
-          </div>
-          <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-300"
-              style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
-            />
+        {/* Progress Ring */}
+        <div className="flex justify-center mb-8">
+          <div className="relative w-32 h-32">
+            <svg className="transform -rotate-90 w-32 h-32">
+              <circle
+                cx="64"
+                cy="64"
+                r="56"
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="none"
+                className="text-white/10"
+              />
+              <circle
+                cx="64"
+                cy="64"
+                r="56"
+                stroke="url(#gradient)"
+                strokeWidth="8"
+                fill="none"
+                strokeDasharray={`${2 * Math.PI * 56}`}
+                strokeDashoffset={`${2 * Math.PI * 56 * (1 - progress / 100)}`}
+                className="transition-all duration-500 ease-out"
+                strokeLinecap="round"
+              />
+            </svg>
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#a855f7" />
+                <stop offset="100%" stopColor="#6366f1" />
+              </linearGradient>
+            </defs>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{progress}%</div>
+                <div className="text-xs text-purple-200/70">Complete</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Step Navigation */}
-        <div className="flex items-center justify-between mb-8 overflow-x-auto pb-4">
-          {STEP_TITLES.map((title, index) => {
-            const stepNum = index + 1;
-            const Icon = stepIcons[index];
-            const isActive = stepNum === currentStep;
-            const isCompleted = stepNum < currentStep;
+        {/* Section Indicators */}
+        <div className="flex justify-center gap-3 mb-8 flex-wrap">
+          {SECTIONS.map((section, index) => {
+            const Icon = section.icon;
+            const isComplete = isSectionComplete(section.id);
+            const isActive = index === activeSection;
             
             return (
-              <div
-                key={stepNum}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+              <button
+                key={section.id}
+                onClick={() => {
+                  setDirection(index > activeSection ? 'next' : 'prev');
+                  setActiveSection(index);
+                }}
+                title={section.title}
+                className={`relative group flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${
                   isActive
-                    ? 'bg-purple-500/20 border-2 border-purple-400'
-                    : isCompleted
-                    ? 'bg-purple-500/10 border border-purple-400/30'
-                    : 'bg-white/5 border border-white/10'
+                    ? 'bg-gradient-to-r ' + section.color + ' shadow-lg scale-110'
+                    : isComplete
+                    ? 'bg-white/10 hover:bg-white/20'
+                    : 'bg-white/5 hover:bg-white/10'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-purple-300' : isCompleted ? 'text-purple-400' : 'text-purple-200/50'}`} />
-                <span className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-white' : isCompleted ? 'text-purple-300' : 'text-purple-200/50'}`}>
-                  {title}
-                </span>
-                {isCompleted && <CheckCircle2 className="w-4 h-4 text-purple-400" />}
-              </div>
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : isComplete ? 'text-green-400' : 'text-purple-300'}`} />
+                {isComplete && !isActive && (
+                  <CheckCircle2 className="absolute -top-1 -right-1 w-4 h-4 text-green-400 bg-slate-950 rounded-full" />
+                )}
+              </button>
             );
           })}
         </div>
 
-        {/* Error/Success Messages */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-200">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg flex items-center gap-2 text-green-200">
-            <CheckCircle2 className="w-5 h-5" />
-            <span>Profile saved successfully! Redirecting...</span>
-          </div>
-        )}
-
-        {/* Form Content */}
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-xl p-8 mb-6">
-          {renderStepContent()}
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={handlePrevious}
-            disabled={currentStep === 1}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all ${
-              currentStep === 1
-                ? 'bg-white/5 text-purple-200/50 cursor-not-allowed'
-                : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
-            }`}
+        {/* Main Card */}
+        <div className="relative max-w-3xl mx-auto">
+          <div
+            key={activeSection}
+            className={`
+              relative bg-white/5 backdrop-blur-2xl rounded-3xl border border-white/10
+              shadow-2xl p-8 md:p-12
+              transition-all duration-500 ease-out
+              ${direction === 'next' ? 'animate-slide-in-right' : 'animate-slide-in-left'}
+            `}
+            style={{
+              background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)`,
+            }}
           >
-            <ChevronLeft className="w-5 h-5" />
-            Previous
-          </button>
+            {/* Card glow */}
+            <div className={`absolute inset-0 bg-gradient-to-r ${currentSection.color} opacity-10 rounded-3xl blur-2xl -z-10`} />
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => handleSave(false)}
-              disabled={saving}
-              className="px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/10 transition-all disabled:opacity-50"
-            >
-              {saving ? <Loader className="w-5 h-5 animate-spin" /> : 'Save Draft'}
-            </button>
+            {/* Section Header */}
+            <div className="text-center mb-8">
+              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r ${currentSection.color} mb-4 shadow-lg`}>
+                <SectionIcon className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold mb-2">{currentSection.title}</h2>
+              <p className="text-purple-200/70">{currentSection.subtitle}</p>
+              <p className="mt-4 text-purple-300/80 text-lg">{currentSection.prompt}</p>
+            </div>
 
-            {currentStep < TOTAL_STEPS ? (
+            {/* Card Content */}
+            <div className="space-y-6">
+              {renderSectionContent(currentSection.id)}
+            </div>
+
+            {/* Navigation */}
+            <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
               <button
-                onClick={handleNext}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white transition-all"
+                onClick={() => navigateSection('prev')}
+                disabled={activeSection === 0}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
+                  activeSection === 0
+                    ? 'opacity-50 cursor-not-allowed bg-white/5'
+                    : 'bg-white/10 hover:bg-white/20'
+                }`}
               >
-                Next
-                <ChevronRight className="w-5 h-5" />
+                <ArrowLeft className="w-5 h-5" />
+                <span>Previous</span>
               </button>
-            ) : (
-              <button
-                onClick={() => handleSave(true)}
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white transition-all disabled:opacity-50"
-              >
-                {saving ? (
-                  <>
-                    <Loader className="w-5 h-5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    Complete Profile
-                  </>
+
+              <div className="flex items-center gap-3">
+                {lastSaved && (
+                  <span className="text-xs text-purple-200/50 flex items-center gap-1">
+                    <Save className="w-3 h-3" />
+                    Saved {lastSaved.toLocaleTimeString()}
+                  </span>
                 )}
-              </button>
-            )}
+                {saving && (
+                  <span className="text-xs text-purple-200/50 flex items-center gap-1">
+                    <Loader className="w-3 h-3 animate-spin" />
+                    Saving...
+                  </span>
+                )}
+              </div>
+
+              {activeSection < SECTIONS.length - 1 ? (
+                <button
+                  onClick={() => navigateSection('next')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r ${currentSection.color} hover:shadow-lg transition-all`}
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleComplete}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-lg transition-all disabled:opacity-50"
+                >
+                  {saving ? (
+                    <>
+                      <Loader className="w-5 h-5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>Complete Profile</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Custom animations */}
+      <style>{`
+        @keyframes slide-in-right {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes slide-in-left {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.5s ease-out;
+        }
+        .animate-slide-in-left {
+          animation: slide-in-left 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 
-  function renderStepContent() {
-    switch (currentStep) {
-      case 1:
-        return renderPersonalInfo();
-      case 2:
-        return renderProfessionalInfo();
-      case 3:
-        return renderSkills();
-      case 4:
-        return renderWorkPreferences();
-      case 5:
-        return renderSpecialties();
-      case 6:
-        return renderPortfolio();
+  function renderSectionContent(sectionId: string) {
+    switch (sectionId) {
+      case 'personal':
+        return renderPersonalSection();
+      case 'professional':
+        return renderProfessionalSection();
+      case 'skills':
+        return renderSkillsSection();
+      case 'preferences':
+        return renderPreferencesSection();
+      case 'specialties':
+        return renderSpecialtiesSection();
+      case 'portfolio':
+        return renderPortfolioSection();
       default:
         return null;
     }
   }
 
-  function renderPersonalInfo() {
+  function renderPersonalSection() {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <User className="w-6 h-6 text-purple-400" />
-          <h2 className="text-2xl font-semibold">Personal Information</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              First Name <span className="text-red-400">*</span>
-            </label>
+            <label className="block text-sm font-medium mb-2 text-purple-200">First Name *</label>
             <input
               type="text"
               value={formData.personalInfo.firstName}
               onChange={(e) => updateFormData('personalInfo', { firstName: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
+              onBlur={autoSave}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
               placeholder="John"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Last Name <span className="text-red-400">*</span>
-            </label>
+            <label className="block text-sm font-medium mb-2 text-purple-200">Last Name *</label>
             <input
               type="text"
               value={formData.personalInfo.lastName}
               onChange={(e) => updateFormData('personalInfo', { lastName: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
+              onBlur={autoSave}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
               placeholder="Doe"
             />
           </div>
-
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2 text-purple-200">Display Name *</label>
+          <input
+            type="text"
+            value={formData.personalInfo.displayName}
+            onChange={(e) => updateFormData('personalInfo', { displayName: e.target.value })}
+            onBlur={autoSave}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
+            placeholder="john_doe"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Display Name <span className="text-red-400">*</span>
-            </label>
+            <label className="block text-sm font-medium mb-2 text-purple-200">Location</label>
             <input
               type="text"
-              value={formData.personalInfo.displayName}
-              onChange={(e) => updateFormData('personalInfo', { displayName: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="john_doe"
+              value={formData.personalInfo.location}
+              onChange={(e) => updateFormData('personalInfo', { location: e.target.value })}
+              onBlur={autoSave}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
+              placeholder="City, Country"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Phone Number
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" />
-              <input
-                type="tel"
-                value={formData.personalInfo.phone}
-                onChange={(e) => updateFormData('personalInfo', { phone: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-                placeholder="+1 (555) 123-4567"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Location
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" />
-              <input
-                type="text"
-                value={formData.personalInfo.location}
-                onChange={(e) => updateFormData('personalInfo', { location: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-                placeholder="City, Country"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Timezone
-            </label>
+            <label className="block text-sm font-medium mb-2 text-purple-200">Timezone</label>
             <select
               value={formData.personalInfo.timezone}
               onChange={(e) => updateFormData('personalInfo', { timezone: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
+              onBlur={autoSave}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
             >
               {TIMEZONES.map((tz) => (
                 <option key={tz} value={tz} className="bg-slate-900">
@@ -630,16 +692,14 @@ const TaskerMeta: React.FC = () => {
             </select>
           </div>
         </div>
-
         <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Bio
-          </label>
+          <label className="block text-sm font-medium mb-2 text-purple-200">Bio</label>
           <textarea
             value={formData.personalInfo.bio}
             onChange={(e) => updateFormData('personalInfo', { bio: e.target.value })}
+            onBlur={autoSave}
             rows={4}
-            className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white resize-none"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white resize-none transition-all"
             placeholder="Tell us about yourself..."
           />
         </div>
@@ -647,495 +707,225 @@ const TaskerMeta: React.FC = () => {
     );
   }
 
-  function renderProfessionalInfo() {
+  function renderProfessionalSection() {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Briefcase className="w-6 h-6 text-purple-400" />
-          <h2 className="text-2xl font-semibold">Professional Details</h2>
+        <div>
+          <label className="block text-sm font-medium mb-2 text-purple-200">Professional Title *</label>
+          <input
+            type="text"
+            value={formData.professionalInfo.title}
+            onChange={(e) => updateFormData('professionalInfo', { title: e.target.value })}
+            onBlur={autoSave}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
+            placeholder="e.g., Senior DevOps Engineer"
+          />
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Professional Title <span className="text-red-400">*</span>
-            </label>
+        <div>
+          <label className="block text-sm font-medium mb-3 text-purple-200">Experience Level *</label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {EXPERIENCE_LEVELS.map((level) => (
+              <button
+                key={level.value}
+                type="button"
+                onClick={() => updateFormData('professionalInfo', { experienceLevel: level.value })}
+                onBlur={autoSave}
+                className={`p-4 rounded-xl border transition-all text-left ${
+                  formData.professionalInfo.experienceLevel === level.value
+                    ? 'bg-blue-500/20 border-blue-400 shadow-lg scale-105'
+                    : 'bg-white/5 border-white/10 hover:border-blue-400/50'
+                }`}
+              >
+                <div className="text-2xl mb-1">{level.emoji}</div>
+                <div className="font-medium text-sm">{level.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2 text-purple-200">Years of Experience *</label>
+          <input
+            type="number"
+            min="0"
+            max="50"
+            value={formData.professionalInfo.yearsOfExperience || ''}
+            onChange={(e) => updateFormData('professionalInfo', { yearsOfExperience: parseInt(e.target.value) || 0 })}
+            onBlur={autoSave}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
+            placeholder="5"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-purple-200">LinkedIn</label>
             <input
-              type="text"
-              value={formData.professionalInfo.title}
-              onChange={(e) => updateFormData('professionalInfo', { title: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="e.g., Senior DevOps Engineer, Full Stack Developer"
+              type="url"
+              value={formData.professionalInfo.linkedInUrl}
+              onChange={(e) => updateFormData('professionalInfo', { linkedInUrl: e.target.value })}
+              onBlur={autoSave}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
+              placeholder="https://linkedin.com/in/..."
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Experience Level <span className="text-red-400">*</span>
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {EXPERIENCE_LEVELS.map((level) => (
-                <button
-                  key={level.value}
-                  type="button"
-                  onClick={() => updateFormData('professionalInfo', { experienceLevel: level.value })}
-                  className={`p-3 rounded-lg border transition-all text-left ${
-                    formData.professionalInfo.experienceLevel === level.value
-                      ? 'bg-purple-500/20 border-purple-400'
-                      : 'bg-white/5 border-white/10 hover:border-purple-400/50'
-                  }`}
-                >
-                  <div className="font-medium">{level.label}</div>
-                  <div className="text-xs text-purple-200/70">{level.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Years of Experience <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="50"
-              value={formData.professionalInfo.yearsOfExperience || ''}
-              onChange={(e) => updateFormData('professionalInfo', { yearsOfExperience: parseInt(e.target.value) || 0 })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="5"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Current Role
-            </label>
-            <input
-              type="text"
-              value={formData.professionalInfo.currentRole}
-              onChange={(e) => updateFormData('professionalInfo', { currentRole: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="Senior Developer"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Company
-            </label>
-            <input
-              type="text"
-              value={formData.professionalInfo.company}
-              onChange={(e) => updateFormData('professionalInfo', { company: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="Company Name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              LinkedIn URL
-            </label>
-            <div className="relative">
-              <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" />
-              <input
-                type="url"
-                value={formData.professionalInfo.linkedInUrl}
-                onChange={(e) => updateFormData('professionalInfo', { linkedInUrl: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-                placeholder="https://linkedin.com/in/yourprofile"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Portfolio URL
-            </label>
+            <label className="block text-sm font-medium mb-2 text-purple-200">Portfolio</label>
             <input
               type="url"
               value={formData.professionalInfo.portfolioUrl}
               onChange={(e) => updateFormData('professionalInfo', { portfolioUrl: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
+              onBlur={autoSave}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20 text-white transition-all"
               placeholder="https://yourportfolio.com"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              GitHub URL
-            </label>
-            <div className="relative">
-              <Github className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" />
-              <input
-                type="url"
-                value={formData.professionalInfo.githubUrl}
-                onChange={(e) => updateFormData('professionalInfo', { githubUrl: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-                placeholder="https://github.com/yourusername"
-              />
-            </div>
-          </div>
         </div>
       </div>
     );
   }
 
-  function renderSkills() {
+  function renderSkillsSection() {
+    const addSkill = () => {
+      if (!tempSkill.trim()) return;
+      const currentSkills = formData.skills[skillType];
+      if (currentSkills.includes(tempSkill.trim())) return;
+      
+      updateFormData('skills', {
+        [skillType]: [...currentSkills, tempSkill.trim()],
+      });
+      setTempSkill('');
+    };
+
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Award className="w-6 h-6 text-purple-400" />
-          <h2 className="text-2xl font-semibold">Skills & Expertise</h2>
-        </div>
-
-        {/* Primary Skills */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Primary Skills <span className="text-red-400">*</span>
-            <span className="text-xs text-purple-200/70 ml-2">Your core competencies</span>
-          </label>
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={tempSkill}
-              onChange={(e) => setTempSkill(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addSkill(true);
-                }
-              }}
-              className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="e.g., Kubernetes, Docker, AWS"
-            />
-            <button
-              type="button"
-              onClick={() => addSkill(true)}
-              className="px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {formData.skills.primary.map((skill) => (
-              <span
-                key={skill}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-sm"
-              >
-                {skill}
-                <button
-                  type="button"
-                  onClick={() => removeSkill(skill, true)}
-                  className="hover:text-red-400 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Secondary Skills */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setSkillType('primary')}
+            className={`flex-1 px-4 py-2 rounded-xl transition-all ${
+              skillType === 'primary'
+                ? 'bg-amber-500/20 border-2 border-amber-400'
+                : 'bg-white/5 border border-white/10'
+            }`}
+          >
+            Primary Skills
+          </button>
+          <button
+            type="button"
+            onClick={() => setSkillType('secondary')}
+            className={`flex-1 px-4 py-2 rounded-xl transition-all ${
+              skillType === 'secondary'
+                ? 'bg-amber-500/20 border-2 border-amber-400'
+                : 'bg-white/5 border border-white/10'
+            }`}
+          >
             Secondary Skills
-            <span className="text-xs text-purple-200/70 ml-2">Additional skills you have</span>
-          </label>
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={tempSkill}
-              onChange={(e) => setTempSkill(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addSkill(false);
-                }
-              }}
-              className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="e.g., Python, React, MongoDB"
-            />
-            <button
-              type="button"
-              onClick={() => addSkill(false)}
-              className="px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all"
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={tempSkill}
+            onChange={(e) => setTempSkill(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addSkill();
+              }
+            }}
+            className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/20 text-white transition-all"
+            placeholder={`Add ${skillType === 'primary' ? 'primary' : 'secondary'} skill...`}
+          />
+          <button
+            type="button"
+            onClick={addSkill}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {formData.skills[skillType].map((skill) => (
+            <span
+              key={skill}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 border border-amber-400/30 text-sm"
             >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {formData.skills.secondary.map((skill) => (
-              <span
-                key={skill}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-sm"
+              {skill}
+              <button
+                type="button"
+                onClick={() => {
+                  updateFormData('skills', {
+                    [skillType]: formData.skills[skillType].filter((s) => s !== skill),
+                  });
+                }}
+                className="hover:text-red-400 transition-colors"
               >
-                {skill}
-                <button
-                  type="button"
-                  onClick={() => removeSkill(skill, false)}
-                  className="hover:text-red-400 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Certifications */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Certifications
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setFormData((prev) => ({
-                ...prev,
-                skills: {
-                  ...prev.skills,
-                  certifications: [
-                    ...prev.skills.certifications,
-                    {
-                      name: '',
-                      issuer: '',
-                      issueDate: new Date(),
-                      credentialId: '',
-                      credentialUrl: '',
-                    },
-                  ],
-                },
-              }));
-            }}
-            className="mb-3 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Certification
-          </button>
-          <div className="space-y-4">
-            {formData.skills.certifications.map((cert, index) => (
-              <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/10 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    value={cert.name}
-                    onChange={(e) => {
-                      const certs = [...formData.skills.certifications];
-                      certs[index] = { ...certs[index], name: e.target.value };
-                      updateFormData('skills', { certifications: certs });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Certification Name"
-                  />
-                  <input
-                    type="text"
-                    value={cert.issuer}
-                    onChange={(e) => {
-                      const certs = [...formData.skills.certifications];
-                      certs[index] = { ...certs[index], issuer: e.target.value };
-                      updateFormData('skills', { certifications: certs });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Issuing Organization"
-                  />
-                  <input
-                    type="date"
-                    value={cert.issueDate ? new Date(cert.issueDate).toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const certs = [...formData.skills.certifications];
-                      certs[index] = { ...certs[index], issueDate: new Date(e.target.value) };
-                      updateFormData('skills', { certifications: certs });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                  />
-                  <input
-                    type="url"
-                    value={cert.credentialUrl}
-                    onChange={(e) => {
-                      const certs = [...formData.skills.certifications];
-                      certs[index] = { ...certs[index], credentialUrl: e.target.value };
-                      updateFormData('skills', { certifications: certs });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Verification URL (optional)"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const certs = formData.skills.certifications.filter((_, i) => i !== index);
-                    updateFormData('skills', { certifications: certs });
-                  }}
-                  className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1"
-                >
-                  <X className="w-4 h-4" />
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Languages */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Languages
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setFormData((prev) => ({
-                ...prev,
-                skills: {
-                  ...prev.skills,
-                  languages: [
-                    ...prev.skills.languages,
-                    { code: '', name: '', proficiency: 'professional' },
-                  ],
-                },
-              }));
-            }}
-            className="mb-3 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Language
-          </button>
-          <div className="space-y-3">
-            {formData.skills.languages.map((lang, index) => (
-              <div key={index} className="flex gap-3 items-center">
-                <input
-                  type="text"
-                  value={lang.name}
-                  onChange={(e) => {
-                    const langs = [...formData.skills.languages];
-                    langs[index] = { ...langs[index], name: e.target.value, code: e.target.value.toLowerCase().substring(0, 2) };
-                    updateFormData('skills', { languages: langs });
-                  }}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                  placeholder="Language"
-                />
-                <select
-                  value={lang.proficiency}
-                  onChange={(e) => {
-                    const langs = [...formData.skills.languages];
-                    langs[index] = { ...langs[index], proficiency: e.target.value as Language['proficiency'] };
-                    updateFormData('skills', { languages: langs });
-                  }}
-                  className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                >
-                  {LANGUAGE_PROFICIENCIES.map((prof) => (
-                    <option key={prof} value={prof} className="bg-slate-900 capitalize">
-                      {prof}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const langs = formData.skills.languages.filter((_, i) => i !== index);
-                    updateFormData('skills', { languages: langs });
-                  }}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            ))}
-          </div>
+                <X className="w-4 h-4" />
+              </button>
+            </span>
+          ))}
         </div>
       </div>
     );
   }
 
-  function renderWorkPreferences() {
+  function renderPreferencesSection() {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Clock className="w-6 h-6 text-purple-400" />
-          <h2 className="text-2xl font-semibold">Work Preferences</h2>
+        <div>
+          <label className="block text-sm font-medium mb-3 text-purple-200">Availability *</label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {AVAILABILITY_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => updateFormData('workPreferences', { availability: option.value })}
+                onBlur={autoSave}
+                className={`p-4 rounded-xl border transition-all ${
+                  formData.workPreferences.availability === option.value
+                    ? 'bg-emerald-500/20 border-emerald-400 shadow-lg scale-105'
+                    : 'bg-white/5 border-white/10 hover:border-emerald-400/50'
+                }`}
+              >
+                <div className="text-2xl mb-1">{option.emoji}</div>
+                <div className="font-medium text-sm">{option.label}</div>
+              </button>
+            ))}
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium mb-3 text-purple-200">
-              Availability <span className="text-red-400">*</span>
-            </label>
-            <div className="space-y-2">
-              {AVAILABILITY_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => updateFormData('workPreferences', { availability: option.value })}
-                  className={`w-full p-4 rounded-lg border text-left transition-all ${
-                    formData.workPreferences.availability === option.value
-                      ? 'bg-purple-500/20 border-purple-400'
-                      : 'bg-white/5 border-white/10 hover:border-purple-400/50'
-                  }`}
-                >
-                  <div className="font-medium">{option.label}</div>
-                  <div className="text-xs text-purple-200/70">{option.desc}</div>
-                </button>
-              ))}
-            </div>
+        <div>
+          <label className="block text-sm font-medium mb-3 text-purple-200">Location Preference *</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {LOCATION_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => updateFormData('workPreferences', { location: option.value })}
+                onBlur={autoSave}
+                className={`p-4 rounded-xl border transition-all ${
+                  formData.workPreferences.location === option.value
+                    ? 'bg-emerald-500/20 border-emerald-400 shadow-lg scale-105'
+                    : 'bg-white/5 border-white/10 hover:border-emerald-400/50'
+                }`}
+              >
+                <div className="text-2xl mb-1">{option.emoji}</div>
+                <div className="font-medium text-sm">{option.label}</div>
+              </button>
+            ))}
           </div>
-
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-3 text-purple-200">
-              Location Preference <span className="text-red-400">*</span>
-            </label>
-            <div className="space-y-2">
-              {LOCATION_OPTIONS.map((option) => {
-                const Icon = option.icon;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => updateFormData('workPreferences', { location: option.value })}
-                    className={`w-full p-4 rounded-lg border transition-all flex items-center gap-3 ${
-                      formData.workPreferences.location === option.value
-                        ? 'bg-purple-500/20 border-purple-400'
-                        : 'bg-white/5 border-white/10 hover:border-purple-400/50'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 text-purple-300" />
-                    <span className="font-medium">{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Preferred Hours Per Week
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="80"
-              value={formData.workPreferences.preferredHoursPerWeek || ''}
-              onChange={(e) => updateFormData('workPreferences', { preferredHoursPerWeek: parseInt(e.target.value) || undefined })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="20"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Hourly Rate
-            </label>
+            <label className="block text-sm font-medium mb-2 text-purple-200">Hourly Rate</label>
             <div className="flex gap-2">
               <select
                 value={formData.workPreferences.currency}
                 onChange={(e) => updateFormData('workPreferences', { currency: e.target.value })}
-                className="px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
+                onBlur={autoSave}
+                className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-emerald-400 focus:outline-none text-white"
               >
-                <option value="USD" className="bg-slate-900">USD ($)</option>
-                <option value="EUR" className="bg-slate-900">EUR (€)</option>
-                <option value="GBP" className="bg-slate-900">GBP (£)</option>
-                <option value="INR" className="bg-slate-900">INR (₹)</option>
+                <option value="USD" className="bg-slate-900">USD</option>
+                <option value="EUR" className="bg-slate-900">EUR</option>
+                <option value="GBP" className="bg-slate-900">GBP</option>
               </select>
               <input
                 type="number"
@@ -1143,435 +933,596 @@ const TaskerMeta: React.FC = () => {
                 step="0.01"
                 value={formData.workPreferences.hourlyRate || ''}
                 onChange={(e) => updateFormData('workPreferences', { hourlyRate: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
+                onBlur={autoSave}
+                className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 text-white transition-all"
                 placeholder="50"
               />
             </div>
           </div>
-
           <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Minimum Task Budget
-            </label>
+            <label className="block text-sm font-medium mb-2 text-purple-200">Hours Per Week</label>
             <input
               type="number"
-              min="0"
-              step="0.01"
-              value={formData.workPreferences.minimumTaskBudget || ''}
-              onChange={(e) => updateFormData('workPreferences', { minimumTaskBudget: parseFloat(e.target.value) || 0 })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="100"
+              min="1"
+              max="80"
+              value={formData.workPreferences.preferredHoursPerWeek || ''}
+              onChange={(e) => updateFormData('workPreferences', { preferredHoursPerWeek: parseInt(e.target.value) || undefined })}
+              onBlur={autoSave}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 text-white transition-all"
+              placeholder="20"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-purple-200">
-              Timezone
-            </label>
-            <select
-              value={formData.workPreferences.timezone}
-              onChange={(e) => updateFormData('workPreferences', { timezone: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-            >
-              {TIMEZONES.map((tz) => (
-                <option key={tz} value={tz} className="bg-slate-900">
-                  {tz}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
-          <input
-            type="checkbox"
-            id="fastTrack"
-            checked={formData.workPreferences.fastTrackAvailable}
-            onChange={(e) => updateFormData('workPreferences', { fastTrackAvailable: e.target.checked })}
-            className="w-5 h-5 rounded bg-white/5 border border-white/10 text-purple-500 focus:ring-purple-400"
-          />
-          <label htmlFor="fastTrack" className="text-purple-200 cursor-pointer">
-            Available for fast-track tasks (urgent, quick turnaround)
-          </label>
         </div>
       </div>
     );
   }
 
-  function renderSpecialties() {
+  function renderSpecialtiesSection() {
+    const addSpecialty = () => {
+      if (!tempSpecialty.trim()) return;
+      if (formData.specialties.includes(tempSpecialty.trim())) return;
+      
+      updateFormData('specialties', [...formData.specialties, tempSpecialty.trim()]);
+      setTempSpecialty('');
+    };
+
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Sparkles className="w-6 h-6 text-purple-400" />
-          <h2 className="text-2xl font-semibold">Specialties & Services</h2>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={tempSpecialty}
+            onChange={(e) => setTempSpecialty(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addSpecialty();
+              }
+            }}
+            className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400/20 text-white transition-all"
+            placeholder="Add a specialty..."
+          />
+          <button
+            type="button"
+            onClick={addSpecialty}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
         </div>
+        <div className="flex flex-wrap gap-2">
+          {formData.specialties.map((specialty) => (
+            <span
+              key={specialty}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-500/20 border border-pink-400/30 text-sm"
+            >
+              <Sparkle className="w-4 h-4" />
+              {specialty}
+              <button
+                type="button"
+                onClick={() => {
+                  updateFormData('specialties', formData.specialties.filter((s) => s !== specialty));
+                }}
+                className="hover:text-red-400 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
+  const handleFileUpload = async (file: File, projectIndex: number, fileType: 'image' | 'document') => {
+    if (!currentUser) return;
+
+    const uploadKey = `project-${projectIndex}-${fileType}`;
+    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
+
+    try {
+      const fileRef = ref(storage, `taskerProfiles/${currentUser.uid}/projects/${projectIndex}/${fileType}/${Date.now()}_${file.name}`);
+      await uploadBytes(fileRef, file);
+      const downloadURL = await getDownloadURL(fileRef);
+
+      const projects = [...formData.portfolio.projects];
+      if (fileType === 'image') {
+        projects[projectIndex] = {
+          ...projects[projectIndex],
+          images: [...(projects[projectIndex].images || []), downloadURL],
+        };
+      }
+
+      updateFormData('portfolio', { projects });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
+    }
+  };
+
+  function renderPortfolioSection() {
+    return (
+      <div className="space-y-8">
+        {/* Projects Section */}
         <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Specialties <span className="text-red-400">*</span>
-            <span className="text-xs text-purple-200/70 ml-2">What you're best at</span>
-          </label>
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={tempSpecialty}
-              onChange={(e) => setTempSpecialty(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addSpecialty();
-                }
-              }}
-              className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white"
-              placeholder="e.g., Kubernetes automation, CI/CD hardening"
-            />
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold mb-1">Your Projects</h3>
+              <p className="text-sm text-purple-200/70">Showcase your best work</p>
+            </div>
             <button
               type="button"
-              onClick={addSpecialty}
-              className="px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all"
+              onClick={() => {
+                const projects = [...formData.portfolio.projects];
+                projects.push({
+                  title: '',
+                  description: '',
+                  category: '',
+                  technologies: [],
+                  duration: '',
+                  role: '',
+                  outcome: '',
+                  url: '',
+                  images: [],
+                  completedAt: new Date(),
+                });
+                updateFormData('portfolio', { projects });
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg transition-all"
             >
               <Plus className="w-5 h-5" />
+              <span>Add Project</span>
             </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {formData.specialties.map((specialty) => (
-              <span
-                key={specialty}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-sm"
-              >
-                {specialty}
-                <button
-                  type="button"
-                  onClick={() => removeSpecialty(specialty)}
-                  className="hover:text-red-400 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Service Offerings
-            <span className="text-xs text-purple-200/70 ml-2">Specific services you provide</span>
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setFormData((prev) => ({
-                ...prev,
-                services: [
-                  ...prev.services,
-                  {
-                    title: '',
-                    description: '',
-                    category: '',
-                    hourlyRate: undefined,
-                    fixedRate: undefined,
-                    estimatedHours: undefined,
-                  },
-                ],
-              }));
-            }}
-            className="mb-3 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Service
-          </button>
-          <div className="space-y-4">
-            {formData.services.map((service, index) => (
-              <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/10 space-y-3">
-                <input
-                  type="text"
-                  value={service.title}
-                  onChange={(e) => {
-                    const services = [...formData.services];
-                    services[index] = { ...services[index], title: e.target.value };
-                    updateFormData('services', services);
-                  }}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                  placeholder="Service Title"
-                />
-                <textarea
-                  value={service.description}
-                  onChange={(e) => {
-                    const services = [...formData.services];
-                    services[index] = { ...services[index], description: e.target.value };
-                    updateFormData('services', services);
-                  }}
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm resize-none"
-                  placeholder="Description"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={service.category}
-                    onChange={(e) => {
-                      const services = [...formData.services];
-                      services[index] = { ...services[index], category: e.target.value };
-                      updateFormData('services', services);
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Category"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    value={service.estimatedHours || ''}
-                    onChange={(e) => {
-                      const services = [...formData.services];
-                      services[index] = { ...services[index], estimatedHours: parseInt(e.target.value) || undefined };
-                      updateFormData('services', services);
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Est. Hours"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const services = formData.services.filter((_, i) => i !== index);
-                    updateFormData('services', services);
-                  }}
-                  className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1"
-                >
-                  <X className="w-4 h-4" />
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function renderPortfolio() {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <FolderOpen className="w-6 h-6 text-purple-400" />
-          <h2 className="text-2xl font-semibold">Portfolio & Achievements</h2>
-          <span className="text-sm text-purple-200/70">(Optional but recommended)</span>
-        </div>
-
-        {/* Projects */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Projects
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setFormData((prev) => ({
-                ...prev,
-                portfolio: {
-                  ...prev.portfolio,
-                  projects: [
-                    ...prev.portfolio.projects,
-                    {
-                      title: '',
-                      description: '',
-                      category: '',
-                      technologies: [],
-                      duration: '',
-                      role: '',
-                      outcome: '',
-                      url: '',
-                      images: [],
-                      completedAt: new Date(),
-                    },
-                  ],
-                },
-              }));
-            }}
-            className="mb-3 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Project
-          </button>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {formData.portfolio.projects.map((project, index) => (
-              <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/10 space-y-3">
-                <input
-                  type="text"
-                  value={project.title}
-                  onChange={(e) => {
-                    const projects = [...formData.portfolio.projects];
-                    projects[index] = { ...projects[index], title: e.target.value };
-                    updateFormData('portfolio', { projects });
-                  }}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm font-medium"
-                  placeholder="Project Title"
-                />
-                <textarea
-                  value={project.description}
-                  onChange={(e) => {
-                    const projects = [...formData.portfolio.projects];
-                    projects[index] = { ...projects[index], description: e.target.value };
-                    updateFormData('portfolio', { projects });
-                  }}
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm resize-none"
-                  placeholder="Project description and key achievements"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={project.category}
-                    onChange={(e) => {
-                      const projects = [...formData.portfolio.projects];
-                      projects[index] = { ...projects[index], category: e.target.value };
+              <div
+                key={index}
+                className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold">Project #{index + 1}</h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const projects = formData.portfolio.projects.filter((_, i) => i !== index);
                       updateFormData('portfolio', { projects });
                     }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Category"
-                  />
-                  <input
-                    type="text"
-                    value={project.duration}
-                    onChange={(e) => {
-                      const projects = [...formData.portfolio.projects];
-                      projects[index] = { ...projects[index], duration: e.target.value };
-                      updateFormData('portfolio', { projects });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Duration (e.g., 3 months)"
-                  />
-                  <input
-                    type="text"
-                    value={project.role}
-                    onChange={(e) => {
-                      const projects = [...formData.portfolio.projects];
-                      projects[index] = { ...projects[index], role: e.target.value };
-                      updateFormData('portfolio', { projects });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Your Role"
-                  />
-                  <input
-                    type="url"
-                    value={project.url}
-                    onChange={(e) => {
-                      const projects = [...formData.portfolio.projects];
-                      projects[index] = { ...projects[index], url: e.target.value };
-                      updateFormData('portfolio', { projects });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Project URL"
-                  />
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Project Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={project.title}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = { ...projects[index], title: e.target.value };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white transition-all"
+                      placeholder="e.g., E-commerce Platform Redesign"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Category
+                    </label>
+                    <input
+                      type="text"
+                      value={project.category}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = { ...projects[index], category: e.target.value };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white transition-all"
+                      placeholder="e.g., Web Development"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Duration
+                    </label>
+                    <input
+                      type="text"
+                      value={project.duration}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = { ...projects[index], duration: e.target.value };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white transition-all"
+                      placeholder="e.g., 3 months"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Your Role
+                    </label>
+                    <input
+                      type="text"
+                      value={project.role}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = { ...projects[index], role: e.target.value };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white transition-all"
+                      placeholder="e.g., Lead Developer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Project URL
+                    </label>
+                    <input
+                      type="url"
+                      value={project.url}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = { ...projects[index], url: e.target.value };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white transition-all"
+                      placeholder="https://yourproject.com"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Technologies Used
+                    </label>
+                    <input
+                      type="text"
+                      value={project.technologies.join(', ')}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = {
+                          ...projects[index],
+                          technologies: e.target.value.split(',').map(t => t.trim()).filter(Boolean),
+                        };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white transition-all"
+                      placeholder="React, Node.js, MongoDB (comma separated)"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Description *
+                    </label>
+                    <textarea
+                      value={project.description}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = { ...projects[index], description: e.target.value };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      rows={4}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white resize-none transition-all"
+                      placeholder="Describe the project, challenges, and your contributions..."
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Key Outcomes / Results
+                    </label>
+                    <textarea
+                      value={project.outcome || ''}
+                      onChange={(e) => {
+                        const projects = [...formData.portfolio.projects];
+                        projects[index] = { ...projects[index], outcome: e.target.value };
+                        updateFormData('portfolio', { projects });
+                      }}
+                      onBlur={autoSave}
+                      rows={2}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20 text-white resize-none transition-all"
+                      placeholder="e.g., Increased user engagement by 40%, reduced load time by 50%"
+                    />
+                  </div>
+
+                  {/* File Upload Section */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Project Images / Screenshots
+                    </label>
+                    <div className="flex flex-wrap gap-3 mb-3">
+                      {project.images?.map((imageUrl, imgIndex) => (
+                        <div key={imgIndex} className="relative group">
+                          <img
+                            src={imageUrl}
+                            alt={`Project ${index + 1} image ${imgIndex + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg border border-white/10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const projects = [...formData.portfolio.projects];
+                              projects[index] = {
+                                ...projects[index],
+                                images: projects[index].images?.filter((_, i) => i !== imgIndex) || [],
+                              };
+                              updateFormData('portfolio', { projects });
+                            }}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-4 h-4 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-xl cursor-pointer hover:border-violet-400/50 transition-colors bg-white/5">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        {uploadingFiles[`project-${index}-image`] ? (
+                          <Loader className="w-8 h-8 text-violet-400 animate-spin mb-2" />
+                        ) : (
+                          <Upload className="w-8 h-8 text-violet-400 mb-2" />
+                        )}
+                        <p className="mb-2 text-sm text-purple-200">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-purple-200/70">PNG, JPG, GIF (MAX. 5MB)</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('File size must be less than 5MB');
+                              return;
+                            }
+                            handleFileUpload(file, index, 'image');
+                          }
+                        }}
+                        disabled={uploadingFiles[`project-${index}-image`]}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {formData.portfolio.projects.length === 0 && (
+              <div className="text-center py-12 border-2 border-dashed border-white/20 rounded-2xl">
+                <FolderOpen className="w-16 h-16 text-violet-400 mx-auto mb-4 opacity-50" />
+                <p className="text-purple-200/70 mb-4">No projects added yet</p>
                 <button
                   type="button"
                   onClick={() => {
-                    const projects = formData.portfolio.projects.filter((_, i) => i !== index);
-                    updateFormData('portfolio', { projects });
+                    updateFormData('portfolio', {
+                      projects: [{
+                        title: '',
+                        description: '',
+                        category: '',
+                        technologies: [],
+                        duration: '',
+                        role: '',
+                        outcome: '',
+                        url: '',
+                        images: [],
+                        completedAt: new Date(),
+                      }],
+                    });
                   }}
-                  className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1"
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-lg transition-all"
                 >
-                  <X className="w-4 h-4" />
-                  Remove
+                  Add Your First Project
                 </button>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
-        {/* Achievements */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-purple-200">
-            Key Achievements
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setFormData((prev) => ({
-                ...prev,
-                portfolio: {
-                  ...prev.portfolio,
-                  achievements: [
-                    ...prev.portfolio.achievements,
-                    {
-                      title: '',
-                      description: '',
-                      category: '',
-                      date: new Date(),
-                      metrics: '',
-                      proofUrl: '',
-                    },
-                  ],
-                },
-              }));
-            }}
-            className="mb-3 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Achievement
-          </button>
+        {/* Achievements Section */}
+        <div className="border-t border-white/10 pt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold mb-1">Key Achievements</h3>
+              <p className="text-sm text-purple-200/70">Highlight your major accomplishments</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const achievements = [...formData.portfolio.achievements];
+                achievements.push({
+                  title: '',
+                  description: '',
+                  category: '',
+                  date: new Date(),
+                  metrics: '',
+                  proofUrl: '',
+                });
+                updateFormData('portfolio', { achievements });
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:shadow-lg transition-all"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Achievement</span>
+            </button>
+          </div>
+
           <div className="space-y-4">
             {formData.portfolio.achievements.map((achievement, index) => (
-              <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/10 space-y-3">
-                <input
-                  type="text"
-                  value={achievement.title}
-                  onChange={(e) => {
-                    const achievements = [...formData.portfolio.achievements];
-                    achievements[index] = { ...achievements[index], title: e.target.value };
-                    updateFormData('portfolio', { achievements });
-                  }}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm font-medium"
-                  placeholder="Achievement Title"
-                />
-                <textarea
-                  value={achievement.description}
-                  onChange={(e) => {
-                    const achievements = [...formData.portfolio.achievements];
-                    achievements[index] = { ...achievements[index], description: e.target.value };
-                    updateFormData('portfolio', { achievements });
-                  }}
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm resize-none"
-                  placeholder="Description"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={achievement.category}
-                    onChange={(e) => {
-                      const achievements = [...formData.portfolio.achievements];
-                      achievements[index] = { ...achievements[index], category: e.target.value };
+              <div
+                key={index}
+                className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Achievement #{index + 1}</h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const achievements = formData.portfolio.achievements.filter((_, i) => i !== index);
                       updateFormData('portfolio', { achievements });
                     }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                    placeholder="Category"
-                  />
-                  <input
-                    type="date"
-                    value={achievement.date ? new Date(achievement.date).toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const achievements = [...formData.portfolio.achievements];
-                      achievements[index] = { ...achievements[index], date: new Date(e.target.value) };
-                      updateFormData('portfolio', { achievements });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-purple-400 focus:outline-none text-white text-sm"
-                  />
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Achievement Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={achievement.title}
+                      onChange={(e) => {
+                        const achievements = [...formData.portfolio.achievements];
+                        achievements[index] = { ...achievements[index], title: e.target.value };
+                        updateFormData('portfolio', { achievements });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 text-white transition-all"
+                      placeholder="e.g., Reduced System Downtime by 90%"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Category
+                    </label>
+                    <input
+                      type="text"
+                      value={achievement.category}
+                      onChange={(e) => {
+                        const achievements = [...formData.portfolio.achievements];
+                        achievements[index] = { ...achievements[index], category: e.target.value };
+                        updateFormData('portfolio', { achievements });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 text-white transition-all"
+                      placeholder="e.g., Performance"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={achievement.date ? new Date(achievement.date).toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        const achievements = [...formData.portfolio.achievements];
+                        achievements[index] = { ...achievements[index], date: new Date(e.target.value) };
+                        updateFormData('portfolio', { achievements });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 text-white transition-all"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Description *
+                    </label>
+                    <textarea
+                      value={achievement.description}
+                      onChange={(e) => {
+                        const achievements = [...formData.portfolio.achievements];
+                        achievements[index] = { ...achievements[index], description: e.target.value };
+                        updateFormData('portfolio', { achievements });
+                      }}
+                      onBlur={autoSave}
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 text-white resize-none transition-all"
+                      placeholder="Describe what you achieved and how..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Metrics / Results
+                    </label>
+                    <input
+                      type="text"
+                      value={achievement.metrics || ''}
+                      onChange={(e) => {
+                        const achievements = [...formData.portfolio.achievements];
+                        achievements[index] = { ...achievements[index], metrics: e.target.value };
+                        updateFormData('portfolio', { achievements });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 text-white transition-all"
+                      placeholder="e.g., 90% improvement, $50K saved"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-purple-200">
+                      Proof URL (optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={achievement.proofUrl || ''}
+                      onChange={(e) => {
+                        const achievements = [...formData.portfolio.achievements];
+                        achievements[index] = { ...achievements[index], proofUrl: e.target.value };
+                        updateFormData('portfolio', { achievements });
+                      }}
+                      onBlur={autoSave}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 text-white transition-all"
+                      placeholder="Link to certificate, article, etc."
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {formData.portfolio.achievements.length === 0 && (
+              <div className="text-center py-8 border-2 border-dashed border-white/20 rounded-2xl">
+                <Trophy className="w-12 h-12 text-yellow-400 mx-auto mb-3 opacity-50" />
+                <p className="text-purple-200/70 mb-4">No achievements added yet</p>
                 <button
                   type="button"
                   onClick={() => {
-                    const achievements = formData.portfolio.achievements.filter((_, i) => i !== index);
-                    updateFormData('portfolio', { achievements });
+                    updateFormData('portfolio', {
+                      achievements: [{
+                        title: '',
+                        description: '',
+                        category: '',
+                        date: new Date(),
+                        metrics: '',
+                        proofUrl: '',
+                      }],
+                    });
                   }}
-                  className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1"
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:shadow-lg transition-all"
                 >
-                  <X className="w-4 h-4" />
-                  Remove
+                  Add Your First Achievement
                 </button>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -1580,4 +1531,3 @@ const TaskerMeta: React.FC = () => {
 };
 
 export default TaskerMeta;
-
