@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, User } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -21,6 +22,11 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app);
+
+// Firebase Functions helpers
+export const generateDashboardData = httpsCallable(functions, 'generateDashboardData');
+export const calculateProfileMetrics = httpsCallable(functions, 'calculateProfileMetrics');
 
 // Google Authentication Provider
 export const googleProvider = new GoogleAuthProvider();

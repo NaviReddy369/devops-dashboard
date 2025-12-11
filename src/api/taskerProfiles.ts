@@ -280,7 +280,7 @@ export async function saveTaskerProfile(
       createdAt: existingProfile?.createdAt || Timestamp.now(),
       updatedAt: Timestamp.now(),
       lastActiveAt: Timestamp.now(),
-      profileCompletedAt: completionPercentage >= 80 ? Timestamp.now() : undefined,
+      ...(completionPercentage >= 80 ? { profileCompletedAt: Timestamp.now() } : {}),
     };
 
     if (existingProfile) {
@@ -293,13 +293,14 @@ export async function saveTaskerProfile(
       return existingProfile.id;
     } else {
       // Create new profile
-      return await createDocument<TaskerProfile>(
+      const profileId = await createDocument<TaskerProfile>(
         COLLECTIONS.TASKER_PROFILES,
         profileData,
         userId // Use userId as document ID for easy lookup
       );
+      return profileId;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving tasker profile:', error);
     throw error;
   }

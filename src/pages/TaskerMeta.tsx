@@ -420,6 +420,57 @@ const TaskerMeta: React.FC = () => {
     }
   };
 
+  // File upload handler - must be defined before render functions and return statement
+  const handleFileUpload = async (file: File, projectIndex: number, fileType: 'image' | 'document') => {
+    if (!currentUser) {
+      return;
+    }
+
+    const uploadKey = `project-${projectIndex}-${fileType}`;
+    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
+
+    try {
+      // Map fileType to storage folder name matching rules
+      let folderName: string = fileType;
+      if (fileType === 'image') {
+        folderName = 'images'; // Storage rules expect plural 'images'
+      } else if (fileType === 'document') {
+        // Determine document type from file extension
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (ext === 'csv') {
+          folderName = 'data';
+        } else if (ext === 'py') {
+          folderName = 'code';
+        } else if (ext === 'pdf') {
+          folderName = 'docs';
+        }
+      }
+      
+      // Use projectIndex as projectId (since projects don't have IDs yet during creation)
+      // Convert to string to match storage rules pattern
+      const projectId = projectIndex.toString();
+      const storagePath = `taskerProfiles/${currentUser.uid}/projects/${projectId}/${folderName}/${Date.now()}_${file.name}`;
+      const fileRef = ref(storage, storagePath);
+      await uploadBytes(fileRef, file);
+      const downloadURL = await getDownloadURL(fileRef);
+
+      const projects = [...formData.portfolio.projects];
+      if (fileType === 'image') {
+        projects[projectIndex] = {
+          ...projects[projectIndex],
+          images: [...(projects[projectIndex].images || []), downloadURL],
+        };
+      }
+
+      updateFormData('portfolio', { projects });
+    } catch (error: any) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 flex items-center justify-center">
@@ -669,35 +720,6 @@ const TaskerMeta: React.FC = () => {
         return null;
     }
   }
-
-  // File upload handler - must be defined before render functions
-  const handleFileUpload = async (file: File, projectIndex: number, fileType: 'image' | 'document') => {
-    if (!currentUser) return;
-
-    const uploadKey = `project-${projectIndex}-${fileType}`;
-    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
-
-    try {
-      const fileRef = ref(storage, `taskerProfiles/${currentUser.uid}/projects/${projectIndex}/${fileType}/${Date.now()}_${file.name}`);
-      await uploadBytes(fileRef, file);
-      const downloadURL = await getDownloadURL(fileRef);
-
-      const projects = [...formData.portfolio.projects];
-      if (fileType === 'image') {
-        projects[projectIndex] = {
-          ...projects[projectIndex],
-          images: [...(projects[projectIndex].images || []), downloadURL],
-        };
-      }
-
-      updateFormData('portfolio', { projects });
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Failed to upload file. Please try again.');
-    } finally {
-      setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
-    }
-  };
 
   function renderPersonalSection() {
     return (
