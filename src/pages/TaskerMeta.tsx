@@ -223,26 +223,70 @@ const TaskerMeta: React.FC = () => {
             estimatedHours: s.estimatedHours,
           })),
           portfolio: {
-            projects: profile.portfolio.projects.map((p) => ({
-              title: p.title,
-              description: p.description,
-              category: p.category,
-              technologies: p.technologies,
-              duration: p.duration,
-              role: p.role,
-              outcome: p.outcome,
-              url: p.url,
-              images: p.images,
-              completedAt: p.completedAt,
-            })),
-            achievements: profile.portfolio.achievements.map((a) => ({
-              title: a.title,
-              description: a.description,
-              category: a.category,
-              date: a.date,
-              metrics: a.metrics,
-              proofUrl: a.proofUrl,
-            })),
+            projects: profile.portfolio.projects.map((p) => {
+              // Safely convert Firestore Timestamp to Date for completedAt
+              let completedAt: Date | null = null;
+              const completedAtValue = p.completedAt;
+              
+              if (completedAtValue) {
+                // Check if it's a Firestore Timestamp (has toDate method)
+                if (typeof (completedAtValue as any).toDate === 'function') {
+                  completedAt = (completedAtValue as any).toDate();
+                } else if (completedAtValue instanceof Date) {
+                  completedAt = completedAtValue;
+                } else {
+                  completedAt = new Date(completedAtValue);
+                }
+                
+                // Validate date
+                if (completedAt && isNaN(completedAt.getTime())) {
+                  completedAt = new Date();
+                }
+              }
+              
+              return {
+                title: p.title,
+                description: p.description,
+                category: p.category,
+                technologies: p.technologies,
+                duration: p.duration,
+                role: p.role,
+                outcome: p.outcome,
+                url: p.url,
+                images: p.images,
+                completedAt: completedAt || new Date(),
+              };
+            }),
+            achievements: profile.portfolio.achievements.map((a) => {
+              // Safely convert Firestore Timestamp to Date
+              let date: Date | null = null;
+              const dateValue = a.date;
+              
+              if (dateValue) {
+                // Check if it's a Firestore Timestamp (has toDate method)
+                if (typeof (dateValue as any).toDate === 'function') {
+                  date = (dateValue as any).toDate();
+                } else if (dateValue instanceof Date) {
+                  date = dateValue;
+                } else {
+                  date = new Date(dateValue);
+                }
+                
+                // Validate date
+                if (date && isNaN(date.getTime())) {
+                  date = new Date();
+                }
+              }
+              
+              return {
+                title: a.title,
+                description: a.description,
+                category: a.category,
+                date: date || new Date(),
+                metrics: a.metrics,
+                proofUrl: a.proofUrl,
+              };
+            }),
           },
         });
       }
@@ -625,6 +669,35 @@ const TaskerMeta: React.FC = () => {
         return null;
     }
   }
+
+  // File upload handler - must be defined before render functions
+  const handleFileUpload = async (file: File, projectIndex: number, fileType: 'image' | 'document') => {
+    if (!currentUser) return;
+
+    const uploadKey = `project-${projectIndex}-${fileType}`;
+    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
+
+    try {
+      const fileRef = ref(storage, `taskerProfiles/${currentUser.uid}/projects/${projectIndex}/${fileType}/${Date.now()}_${file.name}`);
+      await uploadBytes(fileRef, file);
+      const downloadURL = await getDownloadURL(fileRef);
+
+      const projects = [...formData.portfolio.projects];
+      if (fileType === 'image') {
+        projects[projectIndex] = {
+          ...projects[projectIndex],
+          images: [...(projects[projectIndex].images || []), downloadURL],
+        };
+      }
+
+      updateFormData('portfolio', { projects });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
+    }
+  };
 
   function renderPersonalSection() {
     return (
@@ -1013,34 +1086,6 @@ const TaskerMeta: React.FC = () => {
       </div>
     );
   }
-
-  const handleFileUpload = async (file: File, projectIndex: number, fileType: 'image' | 'document') => {
-    if (!currentUser) return;
-
-    const uploadKey = `project-${projectIndex}-${fileType}`;
-    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
-
-    try {
-      const fileRef = ref(storage, `taskerProfiles/${currentUser.uid}/projects/${projectIndex}/${fileType}/${Date.now()}_${file.name}`);
-      await uploadBytes(fileRef, file);
-      const downloadURL = await getDownloadURL(fileRef);
-
-      const projects = [...formData.portfolio.projects];
-      if (fileType === 'image') {
-        projects[projectIndex] = {
-          ...projects[projectIndex],
-          images: [...(projects[projectIndex].images || []), downloadURL],
-        };
-      }
-
-      updateFormData('portfolio', { projects });
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Failed to upload file. Please try again.');
-    } finally {
-      setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
-    }
-  };
 
   function renderPortfolioSection() {
     return (
@@ -1431,7 +1476,18 @@ const TaskerMeta: React.FC = () => {
                     </label>
                     <input
                       type="date"
-                      value={achievement.date ? new Date(achievement.date).toISOString().split('T')[0] : ''}
+                      value={(() => {
+                        if (!achievement.date) return '';
+                        try {
+                          const date = achievement.date instanceof Date 
+                            ? achievement.date 
+                            : new Date(achievement.date);
+                          if (isNaN(date.getTime())) return '';
+                          return date.toISOString().split('T')[0];
+                        } catch (e) {
+                          return '';
+                        }
+                      })()}
                       onChange={(e) => {
                         const achievements = [...formData.portfolio.achievements];
                         achievements[index] = { ...achievements[index], date: new Date(e.target.value) };
