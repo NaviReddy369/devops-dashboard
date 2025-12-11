@@ -6,6 +6,7 @@ Python-based functions for profile processing, analytics, and dashboard generati
 from firebase_functions import https_fn, firestore_fn, options
 from firebase_functions.options import set_global_options
 from firebase_admin import initialize_app, firestore
+from firebase_functions.firestore_fn import Event, Change
 from datetime import datetime
 from typing import Any, Dict
 import json
@@ -70,7 +71,7 @@ def on_tasker_profile_create(event: firestore_fn.Event[firestore.DocumentSnapsho
 
 
 @firestore_fn.on_document_updated(document="taskerProfiles/{profileId}")
-def on_tasker_profile_update(event: firestore_fn.Event[firestore.Change[firestore.DocumentSnapshot]]) -> None:
+def on_tasker_profile_update(event: firestore_fn.Event[Change[firestore.DocumentSnapshot]]) -> None:
     """
     Triggered when a tasker profile is updated.
     Recalculates metrics, updates dashboard, and checks TaskAchiever eligibility.
