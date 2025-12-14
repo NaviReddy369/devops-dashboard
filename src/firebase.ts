@@ -47,11 +47,13 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const functions = getFunctions(app);
+// Initialize Functions with region (functions are deployed in us-central1)
+export const functions = getFunctions(app, 'us-central1');
 
 // Firebase Functions helpers
-export const generateDashboardData = httpsCallable(functions, 'generateDashboardData');
-export const calculateProfileMetrics = httpsCallable(functions, 'calculateProfileMetrics');
+// Note: Function names use snake_case as deployed in Python
+export const generateDashboardData = httpsCallable(functions, 'generate_dashboard_data');
+export const calculateProfileMetrics = httpsCallable(functions, 'calculate_profile_metrics');
 
 // Google Authentication Provider
 export const googleProvider = new GoogleAuthProvider();

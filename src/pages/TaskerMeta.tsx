@@ -43,6 +43,7 @@ import {
   saveTaskerProfile,
   getTaskerProfileByUserId,
 } from '../api/taskerProfiles';
+import { calculateProfileMetrics } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -197,6 +198,8 @@ const TaskerMeta: React.FC = () => {
     loadExistingProfile();
   }, [currentUser]);
 
+  const [existingProfile, setExistingProfile] = useState<any>(null);
+
   const loadExistingProfile = async () => {
     if (!currentUser) return;
     
@@ -204,6 +207,8 @@ const TaskerMeta: React.FC = () => {
       setLoading(true);
       const profile = await getTaskerProfileByUserId(currentUser.uid);
       if (profile) {
+        setExistingProfile(profile);
+        console.log('Loaded existing profile:', profile.id, 'Completion:', profile.completionPercentage);
         setFormData({
           personalInfo: profile.personalInfo,
           professionalInfo: profile.professionalInfo,
@@ -308,7 +313,48 @@ const TaskerMeta: React.FC = () => {
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         setSaving(true);
-        await saveTaskerProfile(currentUser.uid, currentUser.email || '', formData);
+        // Load existing profile first to avoid data loss - if it fails, continue without it
+        let currentProfile = existingProfile;
+        if (!currentProfile) {
+          try {
+            currentProfile = await getTaskerProfileByUserId(currentUser.uid);
+          } catch (loadErr) {
+            // Don't throw - continue without existing profile
+            console.warn('Could not load existing profile for auto-save:', loadErr);
+            currentProfile = undefined;
+          }
+        }
+        const oldCompletion = currentProfile?.completionPercentage || 0;
+        
+        const profileId = await saveTaskerProfile(
+          currentUser.uid, 
+          currentUser.email || '', 
+          formData,
+          currentProfile
+        );
+        
+        // Update existing profile reference
+        const updatedProfile = await getTaskerProfileByUserId(currentUser.uid);
+        if (updatedProfile) {
+          setExistingProfile(updatedProfile);
+          
+          // Call cloud function if completion percentage changed significantly
+          // This ensures metrics are recalculated server-side
+          if (Math.abs((updatedProfile.completionPercentage || 0) - oldCompletion) >= 5) {
+            try {
+              await calculateProfileMetrics({});
+              console.log('Profile metrics updated via cloud function');
+            } catch (funcError) {
+              console.warn('Cloud function call failed (non-critical):', funcError);
+            }
+          }
+          
+          // Dispatch event to notify menu that profile was updated
+          if ((updatedProfile.completionPercentage || 0) >= 50) {
+            window.dispatchEvent(new CustomEvent('profileUpdated'));
+          }
+        }
+        
         setLastSaved(new Date());
       } catch (err) {
         console.error('Auto-save failed:', err);
@@ -316,7 +362,7 @@ const TaskerMeta: React.FC = () => {
         setSaving(false);
       }
     }, 1500);
-  }, [currentUser, formData, saving]);
+  }, [currentUser, formData, saving, existingProfile]);
 
   useEffect(() => {
     autoSave();
@@ -360,11 +406,63 @@ const TaskerMeta: React.FC = () => {
     
     try {
       setSaving(true);
-      await saveTaskerProfile(currentUser.uid, currentUser.email || '', formData);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskerMeta.tsx:393',message:'handleComplete started',data:{userId:currentUser.uid,hasExistingProfile:!!existingProfile},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'A,B,C'})}).catch(()=>{});
+      // #endregion
+      // Load existing profile first - if it fails, continue without it (will create new profile)
+      let currentProfile = existingProfile;
+      if (!currentProfile) {
+        try {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskerMeta.tsx:396',message:'Before getTaskerProfileByUserId',data:{userId:currentUser.uid},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          currentProfile = await getTaskerProfileByUserId(currentUser.uid);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskerMeta.tsx:399',message:'After getTaskerProfileByUserId',data:{profileLoaded:!!currentProfile,profileId:currentProfile?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+        } catch (loadErr: any) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskerMeta.tsx:402',message:'Error loading profile - continuing without it',data:{error:loadErr?.message,errorCode:loadErr?.code,willCreateNew:true},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          // Don't throw - continue without existing profile (will create new one)
+          console.warn('Could not load existing profile, will create new one:', loadErr);
+          currentProfile = undefined;
+        }
+      }
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskerMeta.tsx:407',message:'Before saveTaskerProfile',data:{userId:currentUser.uid,userEmail:currentUser.email,formDataKeys:Object.keys(formData),completionPercentage:formData.personalInfo?.firstName?1:0},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'B,C,D'})}).catch(()=>{});
+      // #endregion
+      const profileId = await saveTaskerProfile(
+        currentUser.uid, 
+        currentUser.email || '', 
+        formData,
+        currentProfile
+      );
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskerMeta.tsx:415',message:'After saveTaskerProfile',data:{profileId,success:true},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      
+      // Call cloud function to recalculate completion percentage and metrics
+      try {
+        const { calculateProfileMetrics } = await import('../firebase');
+        await calculateProfileMetrics({});
+        console.log('Profile metrics updated via cloud function');
+      } catch (funcError) {
+        console.warn('Cloud function call failed (non-critical):', funcError);
+        // Continue even if cloud function fails - local calculation is already done
+      }
+      
+      // Dispatch event to notify other components that profile was updated
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
+      
       // Redirect to public Tasker profile page
       navigate(`/tasker/${currentUser.uid}`);
     } catch (err: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskerMeta.tsx:420',message:'Error caught in handleComplete',data:{errorMessage:err?.message,errorCode:err?.code,errorName:err?.name,stack:err?.stack?.substring(0,500),userId:currentUser?.uid},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
+      // #endregion
       console.error('Error saving profile:', err);
+      alert('Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }

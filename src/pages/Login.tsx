@@ -31,12 +31,27 @@ const Login = () => {
     try {
       setError('');
       setLoading(true);
-      await signInWithGoogle();
+      const user = await signInWithGoogle();
+      console.log('Google sign-in successful:', user.email);
       // Auth state will be updated automatically via onAuthStateChanged in AuthContext
-      navigate('/');
+      // Wait a moment for auth state to update
+      setTimeout(() => {
+        navigate('/');
+      }, 500);
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google');
-    } finally {
+      console.error('Google sign-in error:', err);
+      // Provide more specific error messages
+      let errorMessage = 'Failed to sign in with Google';
+      if (err.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Sign-in popup was closed. Please try again.';
+      } else if (err.code === 'auth/popup-blocked') {
+        errorMessage = 'Popup was blocked. Please allow popups and try again.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
       setLoading(false);
     }
   };

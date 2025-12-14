@@ -39,10 +39,14 @@ const TaskPane = () => {
       if (currentUser) {
         try {
           const profile = await getTaskerProfileByUserId(currentUser.uid);
-          setHasProfile(!!profile && profile.completionPercentage >= 50);
+          setHasProfile(!!profile && (profile.completionPercentage || 0) >= 50);
         } catch (error) {
           console.error('Error checking profile:', error);
-          setHasProfile(false);
+          // Don't set to false on permission errors - might be a new user
+          // Only set false if it's a different error
+          if ((error as any)?.code !== 'permission-denied') {
+            setHasProfile(false);
+          }
         }
       } else {
         setHasProfile(false);
@@ -50,6 +54,27 @@ const TaskPane = () => {
     };
     
     checkProfile();
+    
+    // Also check when window regains focus (user might have created profile in another tab)
+    const handleFocus = () => {
+      if (currentUser) {
+        checkProfile();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    // Listen for custom event when profile is created/updated
+    const handleProfileUpdate = () => {
+      checkProfile();
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
   }, [currentUser]);
 
   const menuItems: MenuItem[] = [

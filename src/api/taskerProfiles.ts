@@ -198,10 +198,39 @@ export async function saveTaskerProfile(
   existingProfile?: TaskerProfile
 ): Promise<string> {
   try {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:200',message:'saveTaskerProfile entry',data:{userId,userEmail,hasExistingProfile:!!existingProfile,existingProfileId:existingProfile?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'B,C'})}).catch(()=>{});
+    // #endregion
+    // If existingProfile not provided, try to load it
+    let profile: TaskerProfile | undefined = existingProfile;
+    if (!profile) {
+      try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:205',message:'Loading profile inside saveTaskerProfile',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        const loadedProfile = await getTaskerProfileByUserId(userId);
+        profile = loadedProfile || undefined;
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:208',message:'Profile loaded inside saveTaskerProfile',data:{profileLoaded:!!profile,profileId:profile?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+      } catch (err) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:210',message:'Error loading profile inside saveTaskerProfile',data:{error:(err as any)?.message,errorCode:(err as any)?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        console.warn('Could not load existing profile:', err);
+      }
+    }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:212',message:'Before calculateCompletionPercentage',data:{hasPersonalInfo:!!formData.personalInfo,hasProfessionalInfo:!!formData.professionalInfo},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     const completionPercentage = calculateCompletionPercentage(formData);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:214',message:'After calculateCompletionPercentage',data:{completionPercentage},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     const eligibility = checkTaskAchieverEligibility(
       formData,
-      existingProfile?.metrics
+      profile?.metrics
     );
 
     // Prepare availability schedule
@@ -210,28 +239,48 @@ export async function saveTaskerProfile(
       days: formData.workPreferences.schedule,
     };
 
-    // Prepare portfolio data
+    // Prepare portfolio data - preserve existing IDs to avoid data loss
+    // Note: formData types omit 'id', but at runtime projects/achievements may have IDs from loaded data
     const portfolio = {
-      projects: formData.portfolio.projects.map((p) => ({
+      projects: formData.portfolio.projects.map((p, index) => {
+        // Check if ID exists at runtime (from loaded profile data)
+        const existingId = (p as any).id;
+        // Try to match with existing profile projects by index or title
+        const existingProject = profile?.portfolio?.projects?.[index];
+        return {
         ...p,
-        id: `${Date.now()}-${Math.random()}`,
+          id: existingId || existingProject?.id || `${Date.now()}-${Math.random()}-${index}`,
         isPublic: true,
         completedAt: p.completedAt || new Date(),
-      })),
-      achievements: formData.portfolio.achievements.map((a) => ({
+        };
+      }),
+      achievements: formData.portfolio.achievements.map((a, index) => {
+        // Check if ID exists at runtime (from loaded profile data)
+        const existingId = (a as any).id;
+        // Try to match with existing profile achievements by index or title
+        const existingAchievement = profile?.portfolio?.achievements?.[index];
+        return {
         ...a,
-        id: `${Date.now()}-${Math.random()}`,
+          id: existingId || existingAchievement?.id || `${Date.now()}-${Math.random()}-${index}`,
         date: a.date || new Date(),
-      })),
-      testimonials: existingProfile?.portfolio.testimonials || [],
+        };
+      }),
+      testimonials: profile?.portfolio?.testimonials || [],
     };
 
-    // Prepare services
-    const services = formData.services.map((s) => ({
+    // Prepare services - preserve existing IDs
+    // Note: formData type omits 'id', but at runtime services may have IDs from loaded data
+    const services = formData.services.map((s, index) => {
+      // Check if ID exists at runtime (from loaded profile data)
+      const existingId = (s as any).id;
+      // Try to match with existing profile services by index or title
+      const existingService = profile?.services?.[index];
+      return {
       ...s,
-      id: `${Date.now()}-${Math.random()}`,
+        id: existingId || existingService?.id || `${Date.now()}-${Math.random()}-${index}`,
       isActive: true,
-    }));
+      };
+    });
 
     const profileData: Omit<TaskerProfile, 'id'> = {
       userId,
@@ -264,7 +313,7 @@ export async function saveTaskerProfile(
       services,
       portfolio,
       
-      metrics: existingProfile?.metrics || {
+      metrics: profile?.metrics || {
         tasksCompleted: 0,
         tasksInProgress: 0,
         averageRating: 0,
@@ -277,30 +326,48 @@ export async function saveTaskerProfile(
       
       taskAchieverCriteria: eligibility.criteria,
       
-      createdAt: existingProfile?.createdAt || Timestamp.now(),
+      createdAt: profile?.createdAt || Timestamp.now(),
       updatedAt: Timestamp.now(),
       lastActiveAt: Timestamp.now(),
-      ...(completionPercentage >= 80 ? { profileCompletedAt: Timestamp.now() } : {}),
+      ...(completionPercentage >= 80 && !profile?.profileCompletedAt ? { profileCompletedAt: Timestamp.now() } : {}),
     };
 
-    if (existingProfile) {
-      // Update existing profile
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:315',message:'Before Firestore operation',data:{hasProfile:!!profile,profileId:profile?.id,willUpdate:!!profile,willCreate:!profile,profileDataKeys:Object.keys(profileData)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    if (profile) {
+      // Update existing profile - preserve all existing data
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:318',message:'Calling updateDocument',data:{profileId:profile.id,collection:COLLECTIONS.TASKER_PROFILES},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       await updateDocument<TaskerProfile>(
         COLLECTIONS.TASKER_PROFILES,
-        existingProfile.id,
+        profile.id,
         profileData
       );
-      return existingProfile.id;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:323',message:'updateDocument succeeded',data:{profileId:profile.id},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return profile.id;
     } else {
       // Create new profile
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:328',message:'Calling createDocument',data:{userId,collection:COLLECTIONS.TASKER_PROFILES},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       const profileId = await createDocument<TaskerProfile>(
         COLLECTIONS.TASKER_PROFILES,
         profileData,
         userId // Use userId as document ID for easy lookup
       );
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:333',message:'createDocument succeeded',data:{profileId},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       return profileId;
     }
   } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'taskerProfiles.ts:338',message:'Error in saveTaskerProfile catch block',data:{errorMessage:error?.message,errorCode:error?.code,errorName:error?.name,stack:error?.stack?.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial_debug',hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
+    // #endregion
     console.error('Error saving tasker profile:', error);
     throw error;
   }

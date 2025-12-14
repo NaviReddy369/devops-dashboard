@@ -93,26 +93,44 @@ export async function createDocument<T extends { id?: string }>(
   docId?: string
 ): Promise<string> {
   try {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:96',message:'createDocument entry',data:{collectionName,docId,hasData:!!data,dataKeys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     const collectionRef = collection(db, collectionName);
     
     if (docId) {
       const docRef = doc(collectionRef, docId);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:101',message:'Before setDoc with docId',data:{docId,collectionName},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       await setDoc(docRef, {
         ...data,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:107',message:'setDoc succeeded with docId',data:{docId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       return docId;
     } else {
       const docRef = doc(collectionRef);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:112',message:'Before setDoc without docId',data:{collectionName},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       await setDoc(docRef, {
         ...data,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:118',message:'setDoc succeeded without docId',data:{docId:docRef.id},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       return docRef.id;
     }
-  } catch (error) {
+  } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:123',message:'Error in createDocument',data:{errorMessage:error?.message,errorCode:error?.code,errorName:error?.name,collectionName,docId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     console.error(`Error creating document in ${collectionName}:`, error);
     throw error;
   }
@@ -127,12 +145,24 @@ export async function updateDocument<T>(
   data: Partial<T>
 ): Promise<void> {
   try {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:130',message:'updateDocument entry',data:{collectionName,docId,dataKeys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     const docRef = doc(db, collectionName, docId);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:133',message:'Before updateDoc',data:{docId,collectionName},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     await updateDoc(docRef, {
       ...data,
       updatedAt: Timestamp.now(),
     });
-  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:138',message:'updateDoc succeeded',data:{docId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+  } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/82659649-bb47-4cfa-8853-c0aec6c59272',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestore.ts:141',message:'Error in updateDocument',data:{errorMessage:error?.message,errorCode:error?.code,errorName:error?.name,collectionName,docId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     console.error(`Error updating document ${docId} in ${collectionName}:`, error);
     throw error;
   }
